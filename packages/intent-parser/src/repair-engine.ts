@@ -200,10 +200,17 @@ export function repairSpec(
   rules: RepairRule[] = REPAIR_RULES
 ): { spec: any; repairs: string[] } {
   const repairs: string[] = [];
-  let repairedSpec = JSON.parse(JSON.stringify(spec));
+  let repairedSpec = spec;
+  let hasCloned = false;
 
   for (const rule of rules) {
     if (rule.match(repairedSpec)) {
+      // Clone only when first repair is needed (lazy cloning)
+      if (!hasCloned) {
+        repairedSpec = JSON.parse(JSON.stringify(spec));
+        hasCloned = true;
+      }
+
       repairedSpec = rule.repair(repairedSpec);
       repairs.push(rule.name);
     }

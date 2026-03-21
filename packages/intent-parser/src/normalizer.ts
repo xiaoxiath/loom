@@ -18,24 +18,24 @@ export interface NormalizedPrompt {
  */
 export function normalizePrompt(input: string): NormalizedPrompt {
   const original = input;
-  let normalized = input;
+  let normalized = input.trim().replace(/\s+/g, ' ');
 
-  // 1. Trim and clean whitespace
-  normalized = normalized.trim().replace(/\s+/g, ' ');
+  // Lowercase once for all detection functions
+  const lowerNormalized = normalized.toLowerCase();
 
-  // 2. Detect locale
+  // Detect locale
   const locale = detectLocale(normalized);
 
-  // 3. Extract keywords
-  const keywords = extractKeywords(normalized);
+  // Extract keywords
+  const keywords = extractKeywords(lowerNormalized);
 
-  // 4. Detect game type
-  const gameType = detectGameType(normalized);
+  // Detect game type
+  const gameType = detectGameType(lowerNormalized);
 
-  // 5. Detect style
-  const style = detectStyle(normalized);
+  // Detect style
+  const style = detectStyle(lowerNormalized);
 
-  // 6. Normalize common phrases
+  // Normalize common phrases
   normalized = normalizePhrases(normalized);
 
   return {
@@ -108,9 +108,8 @@ function extractKeywords(text: string): string[] {
     ...entityKeywords,
   ];
 
-  const lowerText = text.toLowerCase();
   for (const keyword of allKeywords) {
-    if (lowerText.includes(keyword)) {
+    if (text.includes(keyword)) {
       keywords.push(keyword);
     }
   }
@@ -119,35 +118,33 @@ function extractKeywords(text: string): string[] {
 }
 
 /**
- * Detect game type from prompt
+ * Detect game type from prompt (text should be lowercase)
  */
 function detectGameType(text: string): string | null {
-  const lowerText = text.toLowerCase();
-
   // Jumper games
   if (
-    lowerText.includes('flappy') ||
-    lowerText.includes('jump') ||
-    (lowerText.includes('tap') && lowerText.includes('avoid'))
+    text.includes('flappy') ||
+    text.includes('jump') ||
+    (text.includes('tap') && text.includes('avoid'))
   ) {
     return 'jumper';
   }
 
   // Runner games
   if (
-    lowerText.includes('runner') ||
-    lowerText.includes('endless') ||
-    (lowerText.includes('run') && lowerText.includes('obstacle'))
+    text.includes('runner') ||
+    text.includes('endless') ||
+    (text.includes('run') && text.includes('obstacle'))
   ) {
     return 'runner';
   }
 
   // Shooter games
   if (
-    lowerText.includes('shoot') ||
-    lowerText.includes('shooter') ||
-    lowerText.includes('space') ||
-    lowerText.includes('tank')
+    text.includes('shoot') ||
+    text.includes('shooter') ||
+    text.includes('space') ||
+    text.includes('tank')
   ) {
     return 'shooter';
   }
@@ -156,16 +153,14 @@ function detectGameType(text: string): string | null {
 }
 
 /**
- * Detect visual style
+ * Detect visual style (text should be lowercase)
  */
 function detectStyle(text: string): string | null {
-  const lowerText = text.toLowerCase();
-
-  if (lowerText.includes('pixel')) return 'pixel';
-  if (lowerText.includes('space')) return 'space';
-  if (lowerText.includes('retro')) return 'retro';
-  if (lowerText.includes('cartoon')) return 'cartoon';
-  if (lowerText.includes('minimalist')) return 'minimalist';
+  if (text.includes('pixel')) return 'pixel';
+  if (text.includes('space')) return 'space';
+  if (text.includes('retro')) return 'retro';
+  if (text.includes('cartoon')) return 'cartoon';
+  if (text.includes('minimalist')) return 'minimalist';
 
   return null;
 }

@@ -7,6 +7,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { LLMClient, LLMConfig, ChatMessage, LLMResponse } from './types';
 import { LLMError, LLMErrorType, DEFAULT_CONFIGS } from './types';
+import { retryWithBackoff, isRetryableError } from './utils/retry';
 
 /**
  * Claude LLM Client
@@ -47,27 +48,33 @@ export class ClaudeClient implements LLMClient {
     const maxTokens = options?.maxTokens ?? this.config.maxTokens;
 
     try {
-      const response = await this.retryOperation(async () => {
-        // Separate system message from other messages
-        const systemMessage = messages.find((m) => m.role === 'system');
-        const conversationMessages = messages.filter((m) => m.role !== 'system');
+      const response = await retryWithBackoff(
+        async () => {
+          const systemMessage = messages.find((m) => m.role === 'system');
+          const conversationMessages = messages.filter((m) => m.role !== 'system');
 
-        const requestParams: Anthropic.Messages.MessageCreateParams = {
-          model: this.config.model,
-          max_tokens: maxTokens,
-          messages: conversationMessages.map((m) => ({
-            role: m.role as 'user' | 'assistant',
-            content: m.content,
-          })),
-          temperature,
-        };
+          const requestParams: Anthropic.Messages.MessageCreateParams = {
+            model: this.config.model,
+            max_tokens: maxTokens,
+            messages: conversationMessages.map((m) => ({
+              role: m.role as 'user' | 'assistant',
+              content: m.content,
+            })),
+            temperature,
+          };
 
-        if (systemMessage) {
-          requestParams.system = systemMessage.content;
+          if (systemMessage) {
+            requestParams.system = systemMessage.content;
+          }
+
+          return await this.client!.messages.create(requestParams);
+        },
+        {
+          maxAttempts: this.config.retryAttempts,
+          delayMs: this.config.retryDelay,
+          isRetryable: isRetryableError,
         }
-
-        return await this.client!.messages.create(requestParams);
-      });
+      );
 
       // Extract text from content blocks
       const textContent = response.content
@@ -103,52 +110,6 @@ export class ClaudeClient implements LLMClient {
     return this.client !== null;
   }
 
-  /**
-   * Retry operation with exponential backoff
-   */
-  private async retryOperation<T>(
-    operation: () => Promise<T>,
-    attempt: number = 1
-  ): Promise<T> {
-    try {
-      return await operation();
-    } catch (error: any) {
-      if (attempt >= this.config.retryAttempts) {
-        throw error;
-      }
-
-      // Check if error is retryable
-      if (this.isRetryableError(error)) {
-        const delay = this.config.retryDelay * Math.pow(2, attempt - 1);
-        await this.sleep(delay);
-        return this.retryOperation(operation, attempt + 1);
-      }
-
-      throw error;
-    }
-  }
-
-  /**
-   * Check if error is retryable
-   */
-  private isRetryableError(error: any): boolean {
-    if (error.status === 429) return true; // Rate limit
-    if (error.status >= 500) return true; // Server error
-    if (error.code === 'ECONNRESET') return true; // Network error
-    if (error.code === 'ETIMEDOUT') return true; // Timeout
-    return false;
-  }
-
-  /**
-   * Sleep utility
-   */
-  private sleep(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
-  }
-
-  /**
-   * Handle and transform errors
-   */
   private handleError(error: any): LLMError {
     // API key error
     if (error.status === 401 || error.message?.includes('api key')) {
