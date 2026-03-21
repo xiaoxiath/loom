@@ -1,0 +1,179 @@
+{
+  "meta": {
+    "title": "Flappy Bird Clone",
+    "genre": "runner",
+    "camera": "side",
+    "dimension": "2D",
+    "version": "1.0"
+  },
+  "settings": {
+    "gravity": 980,
+    "backgroundColor": "#87CEEB",
+    "worldWidth": 800,
+    "worldHeight": 600
+  },
+  "scene": {
+    "type": "single",
+    "cameraFollow": "player",
+    "spawn": {
+      "x": 100,
+      "y": 300
+    }
+  },
+  "entities": [
+    {
+      "id": "player",
+      "type": "player",
+      "sprite": "bird_yellow",
+      "position": {
+        "x": 100,
+        "y": 300
+      },
+      "physics": {
+        "gravity": true,
+        "collidable": true
+      },
+      "components": ["jump", "gravity", "collision", "health"]
+    },
+    {
+      "id": "pipe_top",
+      "type": "obstacle",
+      "sprite": "pipe_green_top",
+      "physics": {
+        "gravity": false,
+        "collidable": true,
+        "static": true
+      },
+      "components": ["spawn", "move", "collision"]
+    },
+    {
+      "id": "pipe_bottom",
+      "type": "obstacle",
+      "sprite": "pipe_green_bottom",
+      "physics": {
+        "gravity": false,
+        "collidable": true,
+        "static": true
+      },
+      "components": ["spawn", "move", "collision"]
+    },
+    {
+      "id": "ground",
+      "type": "obstacle",
+      "sprite": "ground",
+      "position": {
+        "x": 400,
+        "y": 580
+      },
+      "physics": {
+        "gravity": false,
+        "collidable": true,
+        "static": true
+      },
+      "components": ["collision"]
+    }
+  ],
+  "systems": [
+    "physics",
+    "collision",
+    "input",
+    "spawn",
+    "scoring"
+  ],
+  "mechanics": [
+    "jump",
+    "avoid",
+    "spawn"
+  ],
+  "scoring": {
+    "type": "distance",
+    "increment": 1
+  },
+  "ui": {
+    "hud": ["score"],
+    "startScreen": true,
+    "gameOverScreen": true
+  },
+  "assets": [
+    {
+      "id": "bird_yellow",
+      "type": "sprite",
+      "source": "kenney",
+      "metadata": {
+        "tags": ["bird", "yellow", "pixel-art"],
+        "size": "34x24"
+      }
+    },
+    {
+      "id": "pipe_green_top",
+      "type": "sprite",
+      "source": "kenney",
+      "metadata": {
+        "tags": ["pipe", "green", "obstacle"],
+        "size": "52x320"
+      }
+    },
+    {
+      "id": "pipe_green_bottom",
+      "type": "sprite",
+      "source": "kenney",
+      "metadata": {
+        "tags": ["pipe", "green", "obstacle"],
+        "size": "52x320"
+      }
+    },
+    {
+      "id": "ground",
+      "type": "sprite",
+      "source": "kenney",
+      "metadata": {
+        "tags": ["ground", "platform"],
+        "size": "800x40"
+      }
+    },
+    {
+      "id": "background_sky",
+      "type": "background",
+      "source": "kenney",
+      "metadata": {
+        "tags": ["sky", "clouds"],
+        "size": "800x600"
+      }
+    },
+    {
+      "id": "sound_jump",
+      "type": "sound",
+      "source": "kenney",
+      "metadata": {
+        "tags": ["jump", "wing-flap"]
+      }
+    },
+    {
+      "id": "sound_score",
+      "type": "sound",
+      "source": "kenney",
+      "metadata": {
+        "tags": ["score", "point"]
+      }
+    },
+    {
+      "id": "sound_hit",
+      "type": "sound",
+      "source": "kenney",
+      "metadata": {
+        "tags": ["hit", "collision"]
+      }
+    }
+  ],
+  "extensions": {
+    "difficulty": {
+      "pipeSpeed": 200,
+      "pipeGap": 150,
+      "pipeSpawnRate": 2000
+    },
+    "gameOver": {
+      "onCollision": true,
+      "onGroundHit": true
+    }
+  }
+}

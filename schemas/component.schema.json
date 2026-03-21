@@ -1,0 +1,203 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://loom.dev/schemas/component.schema.json",
+  "title": "Component",
+  "description": "Component specification for Loom platform",
+  "type": "object",
+  "required": ["type", "enabled", "config"],
+  "additionalProperties": false,
+  "properties": {
+    "type": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Component type identifier"
+    },
+    "enabled": {
+      "type": "boolean",
+      "description": "Whether component is enabled"
+    },
+    "config": {
+      "type": "object",
+      "description": "Component configuration parameters"
+    },
+    "events": {
+      "$ref": "#/definitions/ComponentEvents"
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true,
+      "description": "List of required component dependencies"
+    }
+  },
+  "definitions": {
+    "ComponentEvents": {
+      "type": "object",
+      "properties": {
+        "onStart": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Actions to execute on start"
+        },
+        "onUpdate": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Actions to execute on update"
+        },
+        "onCollision": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Actions to execute on collision"
+        },
+        "onDestroy": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Actions to execute on destroy"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "type": { "const": "jump" } }
+      },
+      "then": {
+        "properties": {
+          "config": {
+            "type": "object",
+            "required": ["force"],
+            "properties": {
+              "force": {
+                "type": "number",
+                "minimum": 1,
+                "description": "Jump force"
+              },
+              "maxCount": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Maximum jump count (double jump, etc.)"
+              },
+              "cooldown": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Cooldown time in milliseconds"
+              }
+            }
+          },
+          "dependencies": {
+            "const": ["gravity"]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "type": { "const": "gravity" } }
+      },
+      "then": {
+        "properties": {
+          "config": {
+            "type": "object",
+            "required": ["value"],
+            "properties": {
+              "value": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Gravity value (default: 980)"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "type": { "const": "shoot" } }
+      },
+      "then": {
+        "properties": {
+          "config": {
+            "type": "object",
+            "required": ["rate", "projectile"],
+            "properties": {
+              "rate": {
+                "type": "number",
+                "minimum": 100,
+                "description": "Fire rate in milliseconds"
+              },
+              "projectile": {
+                "type": "string",
+                "description": "Projectile entity ID"
+              },
+              "speed": {
+                "type": "number",
+                "minimum": 1,
+                "description": "Projectile speed"
+              },
+              "damage": {
+                "type": "number",
+                "minimum": 1,
+                "description": "Damage amount"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "type": { "const": "health" } }
+      },
+      "then": {
+        "properties": {
+          "config": {
+            "type": "object",
+            "required": ["max"],
+            "properties": {
+              "max": {
+                "type": "number",
+                "minimum": 1,
+                "description": "Maximum health"
+              },
+              "current": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Current health (defaults to max)"
+              },
+              "regen": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Health regeneration rate per second"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "type": { "const": "keyboardInput" } }
+      },
+      "then": {
+        "properties": {
+          "config": {
+            "type": "object",
+            "description": "Key mappings (e.g., {\"left\": \"A\", \"right\": \"D\", \"jump\": \"SPACE\"})"
+          }
+        }
+      }
+    }
+  ]
+}

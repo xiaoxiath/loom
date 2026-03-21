@@ -1,0 +1,266 @@
+{
+  "meta": {
+    "title": "Galactic Shooter",
+    "genre": "shooter",
+    "camera": "topdown",
+    "dimension": "2D",
+    "version": "1.0"
+  },
+  "settings": {
+    "gravity": 0,
+    "backgroundColor": "#0a0a0a",
+    "worldWidth": 800,
+    "worldHeight": 600
+  },
+  "scene": {
+    "type": "single",
+    "cameraFollow": "none",
+    "spawn": {
+      "x": 400,
+      "y": 500
+    }
+  },
+  "entities": [
+    {
+      "id": "player",
+      "type": "player",
+      "sprite": "ship_player",
+      "position": {
+        "x": 400,
+        "y": 500
+      },
+      "physics": {
+        "gravity": false,
+        "collidable": true
+      },
+      "components": ["move", "shoot", "health", "collision", "keyboardInput"]
+    },
+    {
+      "id": "player_bullet",
+      "type": "projectile",
+      "sprite": "bullet_player",
+      "physics": {
+        "gravity": false,
+        "collidable": true
+      },
+      "components": ["move", "destroyOnCollision", "timeToLive"]
+    },
+    {
+      "id": "enemy_basic",
+      "type": "enemy",
+      "sprite": "ship_enemy_basic",
+      "physics": {
+        "gravity": false,
+        "collidable": true
+      },
+      "components": ["spawn", "move", "health", "collision", "destroyOnCollision"]
+    },
+    {
+      "id": "enemy_shooter",
+      "type": "enemy",
+      "sprite": "ship_enemy_shooter",
+      "physics": {
+        "gravity": false,
+        "collidable": true
+      },
+      "components": ["spawn", "move", "shoot", "health", "collision", "destroyOnCollision"]
+    },
+    {
+      "id": "enemy_bullet",
+      "type": "projectile",
+      "sprite": "bullet_enemy",
+      "physics": {
+        "gravity": false,
+        "collidable": true
+      },
+      "components": ["move", "destroyOnCollision", "timeToLive"]
+    },
+    {
+      "id": "powerup_health",
+      "type": "pickup",
+      "sprite": "powerup_health",
+      "physics": {
+        "gravity": false,
+        "collidable": true,
+        "static": true
+      },
+      "components": ["spawn", "collect"]
+    },
+    {
+      "id": "powerup_weapon",
+      "type": "pickup",
+      "sprite": "powerup_weapon",
+      "physics": {
+        "gravity": false,
+        "collidable": true,
+        "static": true
+      },
+      "components": ["spawn", "collect"]
+    }
+  ],
+  "systems": [
+    "physics",
+    "collision",
+    "input",
+    "spawn",
+    "scoring",
+    "ai"
+  ],
+  "mechanics": [
+    "shoot",
+    "move",
+    "avoid",
+    "collect"
+  ],
+  "scoring": {
+    "type": "kill",
+    "increment": 100,
+    "target": "enemy"
+  },
+  "ui": {
+    "hud": ["score", "health", "lives"],
+    "startScreen": true,
+    "gameOverScreen": true,
+    "pauseScreen": true
+  },
+  "assets": [
+    {
+      "id": "ship_player",
+      "type": "sprite",
+      "source": "kenney",
+      "metadata": {
+        "tags": ["ship", "player", "spaceship"],
+        "size": "64x64"
+      }
+    },
+    {
+      "id": "ship_enemy_basic",
+      "type": "sprite",
+      "source": "kenney",
+      "metadata": {
+        "tags": ["ship", "enemy", "alien"],
+        "size": "64x64"
+      }
+    },
+    {
+      "id": "ship_enemy_shooter",
+      "type": "sprite",
+      "source": "kenney",
+      "metadata": {
+        "tags": ["ship", "enemy", "alien", "shooter"],
+        "size": "64x64"
+      }
+    },
+    {
+      "id": "bullet_player",
+      "type": "sprite",
+      "source": "kenney",
+      "metadata": {
+        "tags": ["bullet", "laser", "player"],
+        "size": "8x16"
+      }
+    },
+    {
+      "id": "bullet_enemy",
+      "type": "sprite",
+      "source": "kenney",
+      "metadata": {
+        "tags": ["bullet", "laser", "enemy"],
+        "size": "8x16"
+      }
+    },
+    {
+      "id": "powerup_health",
+      "type": "sprite",
+      "source": "kenney",
+      "metadata": {
+        "tags": ["powerup", "health", "heart"],
+        "size": "32x32"
+      }
+    },
+    {
+      "id": "powerup_weapon",
+      "type": "sprite",
+      "source": "kenney",
+      "metadata": {
+        "tags": ["powerup", "weapon", "upgrade"],
+        "size": "32x32"
+      }
+    },
+    {
+      "id": "background_space",
+      "type": "background",
+      "source": "kenney",
+      "metadata": {
+        "tags": ["space", "stars", "nebula"],
+        "size": "800x600"
+      }
+    },
+    {
+      "id": "sound_shoot_player",
+      "type": "sound",
+      "source": "kenney",
+      "metadata": {
+        "tags": ["laser", "shoot", "player"]
+      }
+    },
+    {
+      "id": "sound_shoot_enemy",
+      "type": "sound",
+      "source": "kenney",
+      "metadata": {
+        "tags": ["laser", "shoot", "enemy"]
+      }
+    },
+    {
+      "id": "sound_explosion",
+      "type": "sound",
+      "source": "kenney",
+      "metadata": {
+        "tags": ["explosion", "destroy"]
+      }
+    },
+    {
+      "id": "sound_powerup",
+      "type": "sound",
+      "source": "kenney",
+      "metadata": {
+        "tags": ["powerup", "collect"]
+      }
+    },
+    {
+      "id": "music_background",
+      "type": "music",
+      "source": "kenney",
+      "metadata": {
+        "tags": ["space", "action", "intense"]
+      }
+    }
+  ],
+  "extensions": {
+    "difficulty": {
+      "enemySpawnRate": 2000,
+      "enemyShootRate": 3000,
+      "enemySpeed": 100,
+      "bulletSpeed": 300,
+      "progressive": true
+    },
+    "waves": {
+      "enabled": true,
+      "enemiesPerWave": 10,
+      "waveDelay": 5000,
+      "difficultyIncrease": 1.2
+    },
+    "player": {
+      "lives": 3,
+      "shootRate": 250,
+      "bulletSpeed": 400,
+      "moveSpeed": 200
+    },
+    "powerups": {
+      "healthBonus": 25,
+      "weaponUpgrade": "double",
+      "spawnRate": 10000
+    }
+  }
+}

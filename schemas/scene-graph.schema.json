@@ -1,0 +1,82 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://loom.dev/schemas/scene-graph.schema.json",
+  "title": "SceneGraph",
+  "description": "Scene graph structure for Planner output",
+  "type": "object",
+  "required": ["scenes", "camera", "worldBounds"],
+  "additionalProperties": false,
+  "properties": {
+    "scenes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/SceneNode"
+      },
+      "minItems": 1
+    },
+    "camera": {
+      "$ref": "#/definitions/CameraConfig"
+    },
+    "worldBounds": {
+      "$ref": "#/definitions/WorldBounds"
+    }
+  },
+  "definitions": {
+    "SceneNode": {
+      "type": "object",
+      "required": ["id", "type", "entities"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "type": "string",
+          "enum": ["main", "menu", "gameover", "level"]
+        },
+        "entities": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of entity IDs in this scene"
+        }
+      }
+    },
+    "CameraConfig": {
+      "type": "object",
+      "required": ["follow"],
+      "properties": {
+        "follow": {
+          "type": "string",
+          "description": "Entity ID for camera to follow"
+        },
+        "bounds": {
+          "$ref": "#/definitions/CameraBounds"
+        }
+      },
+      "additionalProperties": false
+    },
+    "CameraBounds": {
+      "type": "object",
+      "required": ["x", "y", "width", "height"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "width": { "type": "number", "minimum": 1 },
+        "height": { "type": "number", "minimum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "WorldBounds": {
+      "type": "object",
+      "required": ["width", "height"],
+      "properties": {
+        "width": { "type": "number", "minimum": 1 },
+        "height": { "type": "number", "minimum": 1 }
+      },
+      "additionalProperties": false
+    }
+  }
+}

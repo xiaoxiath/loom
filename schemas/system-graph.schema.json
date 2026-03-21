@@ -1,0 +1,63 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://loom.dev/schemas/system-graph.schema.json",
+  "title": "SystemGraph",
+  "description": "System dependency graph for Planner output",
+  "type": "object",
+  "required": ["systems", "dependencies"],
+  "additionalProperties": false,
+  "properties": {
+    "systems": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/SystemNode"
+      }
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/SystemDependency"
+      }
+    }
+  },
+  "definitions": {
+    "SystemNode": {
+      "type": "object",
+      "required": ["type", "enabled"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "System type"
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether system is enabled"
+        },
+        "config": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "System configuration"
+        }
+      }
+    },
+    "SystemDependency": {
+      "type": "object",
+      "required": ["system", "requires"],
+      "additionalProperties": false,
+      "properties": {
+        "system": {
+          "type": "string",
+          "description": "System that has dependencies"
+        },
+        "requires": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of required systems"
+        }
+      }
+    }
+  }
+}

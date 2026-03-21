@@ -1,0 +1,325 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://loom.dev/schemas/gamespec.schema.json",
+  "title": "GameSpec",
+  "description": "GameSpec DSL v1.0 - Core game definition format for Loom platform",
+  "type": "object",
+  "required": ["meta", "settings", "scene", "entities", "systems", "mechanics", "scoring", "ui", "assets", "extensions"],
+  "additionalProperties": false,
+  "properties": {
+    "meta": {
+      "$ref": "#/definitions/GameMeta"
+    },
+    "settings": {
+      "$ref": "#/definitions/GameSettings"
+    },
+    "scene": {
+      "$ref": "#/definitions/SceneConfig"
+    },
+    "entities": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Entity"
+      },
+      "minItems": 1
+    },
+    "systems": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/SystemType"
+      },
+      "uniqueItems": true
+    },
+    "mechanics": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/MechanicType"
+      },
+      "uniqueItems": true
+    },
+    "scoring": {
+      "$ref": "#/definitions/ScoringConfig"
+    },
+    "ui": {
+      "$ref": "#/definitions/UIConfig"
+    },
+    "assets": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Asset"
+      }
+    },
+    "extensions": {
+      "$ref": "#/definitions/Extensions"
+    }
+  },
+  "definitions": {
+    "GameMeta": {
+      "type": "object",
+      "required": ["title", "genre", "camera", "dimension", "version"],
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Game title"
+        },
+        "genre": {
+          "$ref": "#/definitions/GameGenre"
+        },
+        "camera": {
+          "$ref": "#/definitions/CameraType"
+        },
+        "dimension": {
+          "$ref": "#/definitions/DimensionType"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+(\\.\\d+)?$",
+          "description": "GameSpec version (e.g., '1.0', '1.0.0')"
+        }
+      }
+    },
+    "GameGenre": {
+      "type": "string",
+      "enum": ["runner", "platformer", "shooter", "puzzle", "rpg", "strategy", "sports", "racing", "arcade"],
+      "description": "Game genre type"
+    },
+    "CameraType": {
+      "type": "string",
+      "enum": ["side", "topdown", "isometric", "first-person", "third-person"],
+      "description": "Camera perspective type"
+    },
+    "DimensionType": {
+      "type": "string",
+      "enum": ["2D", "3D"],
+      "description": "Game dimension"
+    },
+    "GameSettings": {
+      "type": "object",
+      "properties": {
+        "gravity": {
+          "type": "number",
+          "minimum": 0,
+          "description": "World gravity (default: 980)"
+        },
+        "backgroundColor": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "description": "Background color in hex (e.g., '#000000')"
+        },
+        "worldWidth": {
+          "type": "number",
+          "minimum": 1,
+          "description": "World width in pixels"
+        },
+        "worldHeight": {
+          "type": "number",
+          "minimum": 1,
+          "description": "World height in pixels"
+        }
+      },
+      "additionalProperties": true
+    },
+    "SceneType": {
+      "type": "string",
+      "enum": ["single", "multi"],
+      "description": "Scene type"
+    },
+    "SceneConfig": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/SceneType"
+        },
+        "cameraFollow": {
+          "type": "string",
+          "description": "Entity ID for camera to follow"
+        },
+        "spawn": {
+          "$ref": "#/definitions/Position"
+        }
+      },
+      "additionalProperties": true
+    },
+    "Position": {
+      "type": "object",
+      "required": ["x", "y"],
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "additionalProperties": false
+    },
+    "EntityType": {
+      "type": "string",
+      "enum": ["player", "enemy", "npc", "obstacle", "projectile", "platform", "pickup", "spawner", "trigger"],
+      "description": "Entity type"
+    },
+    "Entity": {
+      "type": "object",
+      "required": ["id", "type", "sprite", "components"],
+      "additionalProperties": true,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-zA-Z_][a-zA-Z0-9_-]*$",
+          "description": "Unique entity identifier"
+        },
+        "type": {
+          "$ref": "#/definitions/EntityType"
+        },
+        "sprite": {
+          "type": "string",
+          "description": "Sprite asset ID"
+        },
+        "position": {
+          "$ref": "#/definitions/Position"
+        },
+        "physics": {
+          "$ref": "#/definitions/PhysicsConfig"
+        },
+        "components": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 0,
+          "uniqueItems": true,
+          "description": "List of component types attached to this entity"
+        }
+      }
+    },
+    "PhysicsConfig": {
+      "type": "object",
+      "properties": {
+        "gravity": {
+          "type": "boolean",
+          "description": "Whether entity is affected by gravity"
+        },
+        "collidable": {
+          "type": "boolean",
+          "description": "Whether entity can collide"
+        },
+        "static": {
+          "type": "boolean",
+          "description": "Whether entity is static (doesn't move)"
+        },
+        "bounce": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Bounce coefficient (0-1)"
+        },
+        "friction": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Friction coefficient (0-1)"
+        }
+      },
+      "additionalProperties": true
+    },
+    "SystemType": {
+      "type": "string",
+      "enum": ["physics", "collision", "input", "spawn", "camera", "animation", "sound", "ai", "scoring"],
+      "description": "Game system type"
+    },
+    "MechanicType": {
+      "type": "string",
+      "enum": ["jump", "shoot", "dash", "collect", "avoid", "survive", "follow", "spawn", "patrol"],
+      "description": "Game mechanic type"
+    },
+    "ScoringType": {
+      "type": "string",
+      "enum": ["kill", "collect", "time", "distance", "combo"],
+      "description": "Scoring system type"
+    },
+    "ScoringConfig": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/ScoringType"
+        },
+        "increment": {
+          "type": "number",
+          "minimum": 1,
+          "description": "Score increment amount"
+        },
+        "target": {
+          "type": "string",
+          "description": "Target entity ID for kill/collect scoring"
+        }
+      },
+      "additionalProperties": true
+    },
+    "UIConfig": {
+      "type": "object",
+      "properties": {
+        "hud": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "HUD elements to display (e.g., ['score', 'health'])"
+        },
+        "startScreen": {
+          "type": "boolean",
+          "description": "Show start screen"
+        },
+        "gameOverScreen": {
+          "type": "boolean",
+          "description": "Show game over screen"
+        }
+      },
+      "additionalProperties": true
+    },
+    "AssetType": {
+      "type": "string",
+      "enum": ["sprite", "background", "music", "sound", "ui", "particle", "font"],
+      "description": "Asset type"
+    },
+    "Asset": {
+      "type": "object",
+      "required": ["id", "type", "source"],
+      "additionalProperties": true,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Unique asset identifier"
+        },
+        "type": {
+          "$ref": "#/definitions/AssetType"
+        },
+        "source": {
+          "type": "string",
+          "description": "Asset source (e.g., 'kenney', 'custom', 'ai-generated')"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Asset URL (optional)"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Additional asset metadata"
+        }
+      }
+    },
+    "Extensions": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Extension fields for plugins and future features"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://loom.dev/schemas/component-graph.schema.json",
+  "title": "ComponentGraph",
+  "description": "Component binding graph for Planner output",
+  "type": "object",
+  "required": ["entityComponents"],
+  "additionalProperties": false,
+  "properties": {
+    "entityComponents": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "List of component types attached to this entity"
+      },
+      "description": "Map of entity ID to list of component types"
+    }
+  }
+}

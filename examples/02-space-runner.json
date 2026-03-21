@@ -1,0 +1,207 @@
+{
+  "meta": {
+    "title": "Space Runner",
+    "genre": "runner",
+    "camera": "side",
+    "dimension": "2D",
+    "version": "1.0"
+  },
+  "settings": {
+    "gravity": 800,
+    "backgroundColor": "#000011",
+    "worldWidth": 3000,
+    "worldHeight": 600
+  },
+  "scene": {
+    "type": "single",
+    "cameraFollow": "player",
+    "spawn": {
+      "x": 100,
+      "y": 500
+    }
+  },
+  "entities": [
+    {
+      "id": "player",
+      "type": "player",
+      "sprite": "astronaut",
+      "position": {
+        "x": 100,
+        "y": 500
+      },
+      "physics": {
+        "gravity": true,
+        "collidable": true,
+        "bounce": 0
+      },
+      "components": ["run", "jump", "gravity", "collision", "health", "collect"]
+    },
+    {
+      "id": "platform",
+      "type": "platform",
+      "sprite": "platform_space",
+      "physics": {
+        "gravity": false,
+        "collidable": true,
+        "static": true
+      },
+      "components": ["spawn"]
+    },
+    {
+      "id": "coin",
+      "type": "pickup",
+      "sprite": "coin_gold",
+      "physics": {
+        "gravity": false,
+        "collidable": true,
+        "static": true
+      },
+      "components": ["spawn", "collect"]
+    },
+    {
+      "id": "asteroid",
+      "type": "obstacle",
+      "sprite": "asteroid",
+      "physics": {
+        "gravity": false,
+        "collidable": true,
+        "static": true
+      },
+      "components": ["spawn", "move", "destroyOnCollision"]
+    },
+    {
+      "id": "ground",
+      "type": "platform",
+      "sprite": "ground_space",
+      "position": {
+        "x": 1500,
+        "y": 580
+      },
+      "physics": {
+        "gravity": false,
+        "collidable": true,
+        "static": true
+      },
+      "components": ["collision"]
+    }
+  ],
+  "systems": [
+    "physics",
+    "collision",
+    "input",
+    "spawn",
+    "scoring"
+  ],
+  "mechanics": [
+    "run",
+    "jump",
+    "collect",
+    "avoid"
+  ],
+  "scoring": {
+    "type": "collect",
+    "increment": 10,
+    "target": "coin"
+  },
+  "ui": {
+    "hud": ["score", "health"],
+    "startScreen": true,
+    "gameOverScreen": true
+  },
+  "assets": [
+    {
+      "id": "astronaut",
+      "type": "sprite",
+      "source": "kenney",
+      "metadata": {
+        "tags": ["astronaut", "space", "character"],
+        "size": "32x48"
+      }
+    },
+    {
+      "id": "platform_space",
+      "type": "sprite",
+      "source": "kenney",
+      "metadata": {
+        "tags": ["platform", "space", "metal"],
+        "size": "128x32"
+      }
+    },
+    {
+      "id": "coin_gold",
+      "type": "sprite",
+      "source": "kenney",
+      "metadata": {
+        "tags": ["coin", "gold", "collectible"],
+        "size": "32x32"
+      }
+    },
+    {
+      "id": "asteroid",
+      "type": "sprite",
+      "source": "kenney",
+      "metadata": {
+        "tags": ["asteroid", "space", "obstacle"],
+        "size": "48x48"
+      }
+    },
+    {
+      "id": "ground_space",
+      "type": "sprite",
+      "source": "kenney",
+      "metadata": {
+        "tags": ["ground", "space", "platform"],
+        "size": "3000x40"
+      }
+    },
+    {
+      "id": "background_space",
+      "type": "background",
+      "source": "kenney",
+      "metadata": {
+        "tags": ["space", "stars", "galaxy"],
+        "size": "3000x600"
+      }
+    },
+    {
+      "id": "sound_jump",
+      "type": "sound",
+      "source": "kenney",
+      "metadata": {
+        "tags": ["jump", "whoosh"]
+      }
+    },
+    {
+      "id": "sound_coin",
+      "type": "sound",
+      "source": "kenney",
+      "metadata": {
+        "tags": ["coin", "collect", "bling"]
+      }
+    },
+    {
+      "id": "music_background",
+      "type": "music",
+      "source": "kenney",
+      "metadata": {
+        "tags": ["space", "ambient", "electronic"]
+      }
+    }
+  ],
+  "extensions": {
+    "difficulty": {
+      "autoScroll": true,
+      "scrollSpeed": 150,
+      "platformGap": 200,
+      "asteroidSpawnRate": 3000
+    },
+    "powerups": {
+      "doubleJump": false,
+      "shield": false
+    },
+    "levels": {
+      "infinite": true,
+      "difficulty": "progressive"
+    }
+  }
+}

@@ -1,0 +1,87 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://loom.dev/schemas/entity-graph.schema.json",
+  "title": "EntityGraph",
+  "description": "Entity relationship graph for Planner output",
+  "type": "object",
+  "required": ["nodes", "edges"],
+  "additionalProperties": false,
+  "properties": {
+    "nodes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/EntityNode"
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/EntityEdge"
+      }
+    }
+  },
+  "definitions": {
+    "EntityNode": {
+      "type": "object",
+      "required": ["id", "type", "position"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Unique entity identifier"
+        },
+        "type": {
+          "type": "string",
+          "description": "Entity type"
+        },
+        "parentId": {
+          "type": "string",
+          "description": "Parent entity ID (optional)"
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Child entity IDs"
+        },
+        "position": {
+          "$ref": "#/definitions/Position"
+        }
+      }
+    },
+    "EntityEdge": {
+      "type": "object",
+      "required": ["from", "to", "type"],
+      "additionalProperties": false,
+      "properties": {
+        "from": {
+          "type": "string",
+          "description": "Source entity ID"
+        },
+        "to": {
+          "type": "string",
+          "description": "Target entity ID"
+        },
+        "type": {
+          "$ref": "#/definitions/EntityRelationType"
+        }
+      }
+    },
+    "EntityRelationType": {
+      "type": "string",
+      "enum": ["spawns", "follows", "collides", "triggers", "contains"],
+      "description": "Type of relationship between entities"
+    },
+    "Position": {
+      "type": "object",
+      "required": ["x", "y"],
+      "additionalProperties": false,
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" }
+      }
+    }
+  }
+}
