@@ -1,0 +1,224 @@
+/**
+ * Claude (Anthropic) LLM Client
+ *
+ * Implements LLMClient interface for Anthropic's Claude API
+ */
+
+import Anthropic from '@anthropic-ai/sdk';
+import type { LLMClient, LLMConfig, ChatMessage, LLMResponse } from './types';
+import { LLMError, LLMErrorType, DEFAULT_CONFIGS } from './types';
+
+/**
+ * Claude LLM Client
+ */
+export class ClaudeClient implements LLMClient {
+  private client: Anthropic | null = null;
+  private config: Required<Omit<LLMConfig, 'apiKey'>> & { apiKey?: string };
+
+  constructor(config: LLMConfig) {
+    this.config = {
+      ...DEFAULT_CONFIGS.claude,
+      ...config,
+    } as Required<Omit<LLMConfig, 'apiKey'>> & { apiKey?: string };
+
+    if (this.config.apiKey) {
+      this.client = new Anthropic({
+        apiKey: this.config.apiKey,
+      });
+    }
+  }
+
+  async chat(
+    messages: ChatMessage[],
+    options?: {
+      temperature?: number;
+      maxTokens?: number;
+      jsonMode?: { enabled: boolean };
+    }
+  ): Promise<LLMResponse> {
+    if (!this.client) {
+      throw new LLMError(
+        LLMErrorType.API_KEY_MISSING,
+        'Claude API key not configured'
+      );
+    }
+
+    const temperature = options?.temperature ?? this.config.temperature;
+    const maxTokens = options?.maxTokens ?? this.config.maxTokens;
+
+    try {
+      const response = await this.retryOperation(async () => {
+        // Separate system message from other messages
+        const systemMessage = messages.find((m) => m.role === 'system');
+        const conversationMessages = messages.filter((m) => m.role !== 'system');
+
+        const requestParams: Anthropic.Messages.MessageCreateParams = {
+          model: this.config.model,
+          max_tokens: maxTokens,
+          messages: conversationMessages.map((m) => ({
+            role: m.role as 'user' | 'assistant',
+            content: m.content,
+          })),
+          temperature,
+        };
+
+        if (systemMessage) {
+          requestParams.system = systemMessage.content;
+        }
+
+        return await this.client!.messages.create(requestParams);
+      });
+
+      // Extract text from content blocks
+      const textContent = response.content
+        .filter((block) => block.type === 'text')
+        .map((block) => (block as Anthropic.Messages.TextBlock).text)
+        .join('');
+
+      return {
+        content: textContent,
+        provider: 'claude',
+        model: response.model,
+        usage: {
+          promptTokens: response.usage.input_tokens,
+          completionTokens: response.usage.output_tokens,
+          totalTokens: response.usage.input_tokens + response.usage.output_tokens,
+        },
+        finishReason: response.stop_reason || 'stop',
+      };
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  getProvider(): 'claude' {
+    return 'claude';
+  }
+
+  getModel(): string {
+    return this.config.model;
+  }
+
+  isConfigured(): boolean {
+    return this.client !== null;
+  }
+
+  /**
+   * Retry operation with exponential backoff
+   */
+  private async retryOperation<T>(
+    operation: () => Promise<T>,
+    attempt: number = 1
+  ): Promise<T> {
+    try {
+      return await operation();
+    } catch (error: any) {
+      if (attempt >= this.config.retryAttempts) {
+        throw error;
+      }
+
+      // Check if error is retryable
+      if (this.isRetryableError(error)) {
+        const delay = this.config.retryDelay * Math.pow(2, attempt - 1);
+        await this.sleep(delay);
+        return this.retryOperation(operation, attempt + 1);
+      }
+
+      throw error;
+    }
+  }
+
+  /**
+   * Check if error is retryable
+   */
+  private isRetryableError(error: any): boolean {
+    if (error.status === 429) return true; // Rate limit
+    if (error.status >= 500) return true; // Server error
+    if (error.code === 'ECONNRESET') return true; // Network error
+    if (error.code === 'ETIMEDOUT') return true; // Timeout
+    return false;
+  }
+
+  /**
+   * Sleep utility
+   */
+  private sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Handle and transform errors
+   */
+  private handleError(error: any): LLMError {
+    // API key error
+    if (error.status === 401 || error.message?.includes('api key')) {
+      return new LLMError(
+        LLMErrorType.API_KEY_MISSING,
+        'Invalid Claude API key',
+        error
+      );
+    }
+
+    // Rate limit
+    if (error.status === 429) {
+      return new LLMError(
+        LLMErrorType.RATE_LIMIT,
+        'Claude rate limit exceeded',
+        error
+      );
+    }
+
+    // Content filtered
+    if (
+      error.message?.includes('content_filter') ||
+      error.message?.includes('safety')
+    ) {
+      return new LLMError(
+        LLMErrorType.CONTENT_FILTERED,
+        'Content filtered by Claude safety system',
+        error
+      );
+    }
+
+    // Invalid request
+    if (error.status === 400) {
+      return new LLMError(
+        LLMErrorType.INVALID_REQUEST,
+        `Invalid request to Claude: ${error.message}`,
+        error
+      );
+    }
+
+    // Model not found
+    if (error.status === 404) {
+      return new LLMError(
+        LLMErrorType.MODEL_NOT_FOUND,
+        `Model ${this.config.model} not found`,
+        error
+      );
+    }
+
+    // Network errors
+    if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
+      return new LLMError(
+        LLMErrorType.NETWORK_ERROR,
+        'Network error connecting to Claude',
+        error
+      );
+    }
+
+    if (error.code === 'ETIMEDOUT') {
+      return new LLMError(
+        LLMErrorType.TIMEOUT,
+        'Request to Claude timed out',
+        error
+      );
+    }
+
+    return new LLMError(
+      LLMErrorType.UNKNOWN,
+      `Claude error: ${error.message}`,
+      error
+    );
+  }
+}
