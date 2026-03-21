@@ -4,7 +4,6 @@
 
 import { CodeGenerator } from '../src/generator';
 import type { CodeGeneratorInput } from '../src/types';
-import type { GameSpec } from '@loom/core';
 
 describe('CodeGenerator', () => {
   let generator: CodeGenerator;
@@ -19,17 +18,19 @@ describe('CodeGenerator', () => {
         gameSpec: {
           meta: {
             title: 'Test Game',
-            genre: 'action',
+            version: '1.0.0',
+            genre: 'platformer',
             camera: 'side',
-            dimension: '2d',
+            dimension: '2D',
           },
           settings: {
             gravity: 980,
-            worldBounds: { width: 800, height: 600 },
+            worldWidth: 800,
+            worldHeight: 600,
             backgroundColor: '#000000',
           },
           scene: {
-            type: 'main',
+            type: 'single',
           },
           entities: [
             {
@@ -37,6 +38,7 @@ describe('CodeGenerator', () => {
               type: 'player',
               sprite: 'player_ship',
               position: { x: 100, y: 300 },
+              components: [],
               physics: {
                 gravity: true,
                 collidable: true,
@@ -46,7 +48,7 @@ describe('CodeGenerator', () => {
           systems: ['physics', 'collision', 'input'],
           mechanics: ['jump'],
           scoring: {
-            type: 'score',
+            type: 'collect',
             increment: 10,
           },
           ui: {},
@@ -101,24 +103,25 @@ describe('CodeGenerator', () => {
         gameSpec: {
           meta: {
             title: 'My Awesome Game',
-            genre: 'action',
+            version: '1.0.0',
+            genre: 'platformer',
             camera: 'side',
-            dimension: '2d',
+            dimension: '2D',
           },
           settings: {},
-          scene: { type: 'main' },
+          scene: { type: 'single' },
           entities: [],
           systems: [],
           mechanics: [],
-          scoring: { type: 'none' },
+          scoring: { type: 'collect' },
           ui: {},
           assets: [],
           extensions: {},
         },
         sceneGraph: {
           scenes: [],
-          camera: {},
-          worldBounds: {},
+          camera: { follow: '' },
+          worldBounds: { width: 800, height: 600 },
         },
         entityGraph: {
           nodes: [],
@@ -148,23 +151,25 @@ describe('CodeGenerator', () => {
         gameSpec: {
           meta: {
             title: 'Test Game',
-            genre: 'action',
+            version: '1.0.0',
+            genre: 'platformer',
             camera: 'side',
-            dimension: '2d',
+            dimension: '2D',
           },
           settings: {},
-          scene: { type: 'main' },
+          scene: { type: 'single' },
           entities: [
             {
               id: 'player',
               type: 'player',
               sprite: 'player_ship',
               position: { x: 200, y: 400 },
+              components: [],
             },
           ],
           systems: [],
           mechanics: [],
-          scoring: { type: 'none' },
+          scoring: { type: 'collect' },
           ui: {},
           assets: [],
           extensions: {},
@@ -172,7 +177,7 @@ describe('CodeGenerator', () => {
         sceneGraph: {
           scenes: [{ id: 'main', type: 'main', entities: ['player'] }],
           camera: { follow: 'player' },
-          worldBounds: {},
+          worldBounds: { width: 800, height: 600 },
         },
         entityGraph: {
           nodes: [{ id: 'player', type: 'player', position: { x: 200, y: 400 }, children: [] }],

@@ -18,11 +18,13 @@
     "typecheck": "tsc --noEmit",
     "test": "jest",
     "test:watch": "jest --watch",
+    "test:e2e": "node src/e2e-test.js",
     "lint": "eslint src/**/*.ts",
     "clean": "rm -rf dist node_modules"
   },
   "dependencies": {
-    "@loom/core": "workspace:*"
+    "@loom/core": "workspace:*",
+    "@loom/planner": "workspace:*"
   },
   "devDependencies": {
     "@types/jest": "^29.5.0",

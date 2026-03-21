@@ -459,8 +459,8 @@ export class PlannerAgent {
    * Stage 5: Optimize graphs
    */
   private optimize(
-    sceneGraph: SceneGraph,
-    entityGraph: EntityGraph,
+    _sceneGraph: SceneGraph,
+    _entityGraph: EntityGraph,
     componentGraph: ComponentGraph,
     systemGraph: SystemGraph
   ): void {
