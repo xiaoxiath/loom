@@ -67,10 +67,41 @@ assets/
 
 ## 🔧 下一步
 
-1. **下载实际资源** - 从 Kenney.nl 获取高质量资源
-2. **转换 PNG** (可选) - 如果需要更好的兼容性
-3. **集成到代码生成器** - 使用真实资源文件
-4. **创建游戏预览** - 在浏览器中运行生成的游戏
+1. ✅ **创建浏览器游戏预览** - 完成！
+   - `examples/simple-phaser-game.html` - Flappy Bird 风格游戏
+   - `examples/ultra-simple-game.html` - 超级简单的跳跃游戏
+   - 两个都可以在浏览器中直接运行
+
+2. **下载实际资源** - 从 Kenney.nl 获取高质量资源
+3. **转换 PNG** (可选) - 如果需要更好的兼容性
+4. **集成到代码生成器** - 使用真实资源文件
+5. **创建 Web UI** - 用户友好的生成界面
+
+## 🎮 如何使用游戏预览
+
+### 方法 1: 直接打开
+```bash
+# 在浏览器中打开
+open examples/ultra-simple-game.html
+# 或
+open examples/simple-phaser-game.html
+```
+
+### 方法 2: 本地服务器
+```bash
+# 启动服务器
+cd /Users/tanghao/workspace/loom
+python3 -m http.server 8000
+
+# 然后在浏览器中访问
+# http://localhost:8000/examples/ultra-simple-game.html
+# http://localhost:8000/examples/simple-phaser-game.html
+```
+
+### 游戏控制
+- **空格键** 或 **上箭头** - 跳跃
+- **左右箭头** - 移动
+- **目标** - 避开障碍物，获得分数
 
 ## 📋 资源清单 (asset-manifest.json)
 
