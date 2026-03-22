@@ -1,0 +1,185 @@
+{
+  "version": "1.0.0",
+  "assets": {
+    "sprites": [
+      {
+        "id": "player_default",
+        "name": "Default Player",
+        "file": "sprites/player_default.png",
+        "tags": ["player", "character", "default"],
+        "dimensions": { "width": 32, "height": 32 },
+        "format": "png"
+      },
+      {
+        "id": "player_bird",
+        "name": "Bird Player",
+        "file": "sprites/player_bird.png",
+        "tags": ["player", "bird", "flappy", "character"],
+        "dimensions": { "width": 34, "height": 24 },
+        "format": "png"
+      },
+      {
+        "id": "player_ship",
+        "name": "Spaceship Player",
+        "file": "sprites/player_ship.png",
+        "tags": ["player", "ship", "spaceship", "shooter", "character"],
+        "dimensions": { "width": 32, "height": 32 },
+        "format": "png"
+      },
+      {
+        "id": "player_runner",
+        "name": "Runner Player",
+        "file": "sprites/player_runner.png",
+        "tags": ["player", "runner", "character"],
+        "dimensions": { "width": 32, "height": 32 },
+        "format": "png"
+      },
+      {
+        "id": "enemy_default",
+        "name": "Default Enemy",
+        "file": "sprites/enemy_default.png",
+        "tags": ["enemy", "character", "default"],
+        "dimensions": { "width": 32, "height": 32 },
+        "format": "png"
+      },
+      {
+        "id": "obstacle_pipe",
+        "name": "Pipe Obstacle",
+        "file": "sprites/obstacle_pipe.png",
+        "tags": ["obstacle", "pipe", "flappy"],
+        "dimensions": { "width": 52, "height": 320 },
+        "format": "png"
+      },
+      {
+        "id": "obstacle_asteroid",
+        "name": "Asteroid",
+        "file": "sprites/obstacle_asteroid.png",
+        "tags": ["obstacle", "asteroid", "space", "shooter"],
+        "dimensions": { "width": 48, "height": 48 },
+        "format": "png"
+      },
+      {
+        "id": "obstacle_spike",
+        "name": "Spike Obstacle",
+        "file": "sprites/obstacle_spike.png",
+        "tags": ["obstacle", "spike", "runner"],
+        "dimensions": { "width": 32, "height": 32 },
+        "format": "png"
+      },
+      {
+        "id": "bullet_default",
+        "name": "Default Bullet",
+        "file": "sprites/bullet_default.png",
+        "tags": ["bullet", "projectile", "shooter"],
+        "dimensions": { "width": 8, "height": 8 },
+        "format": "png"
+      },
+      {
+        "id": "coin_default",
+        "name": "Coin",
+        "file": "sprites/coin_default.png",
+        "tags": ["collectible", "coin", "item"],
+        "dimensions": { "width": 16, "height": 16 },
+        "format": "png"
+      }
+    ],
+    "backgrounds": [
+      {
+        "id": "sky_blue",
+        "name": "Blue Sky",
+        "file": "backgrounds/sky_blue.png",
+        "tags": ["sky", "background", "blue", "default"],
+        "dimensions": { "width": 1920, "height": 1080 },
+        "format": "png"
+      },
+      {
+        "id": "space_stars",
+        "name": "Starfield Space",
+        "file": "backgrounds/space_stars.png",
+        "tags": ["space", "background", "stars", "shooter"],
+        "dimensions": { "width": 1920, "height": 1080 },
+        "format": "png"
+      },
+      {
+        "id": "ground_grass",
+        "name": "Grass Ground",
+        "file": "backgrounds/ground_grass.png",
+        "tags": ["ground", "background", "grass", "platformer"],
+        "dimensions": { "width": 1920, "height": 1080 },
+        "format": "png"
+      }
+    ],
+    "audio": {
+      "sfx": [
+        {
+          "id": "jump_default",
+          "name": "Jump Sound",
+          "file": "audio/sfx/jump_default.mp3",
+          "tags": ["jump", "sfx"],
+          "duration": 0.3
+        },
+        {
+          "id": "shoot_default",
+          "name": "Shoot Sound",
+          "file": "audio/sfx/shoot_default.mp3",
+          "tags": ["shoot", "sfx", "shooter"],
+          "duration": 0.2
+        },
+        {
+          "id": "explosion_default",
+          "name": "Explosion Sound",
+          "file": "audio/sfx/explosion_default.mp3",
+          "tags": ["explosion", "sfx"],
+          "duration": 0.5
+        },
+        {
+          "id": "collect_default",
+          "name": "Collect Sound",
+          "file": "audio/sfx/collect_default.mp3",
+          "tags": ["collect", "coin", "sfx"],
+          "duration": 0.2
+        }
+      ],
+      "music": [
+        {
+          "id": "music_ambient",
+          "name": "Ambient Music",
+          "file": "audio/music/ambient.mp3",
+          "tags": ["music", "ambient", "background"],
+          "duration": 120
+        }
+      ]
+    },
+    "ui": [
+      {
+        "id": "button_default",
+        "name": "Default Button",
+        "file": "ui/button_default.png",
+        "tags": ["button", "ui", "default"],
+        "dimensions": { "width": 200, "height": 50 },
+        "format": "png"
+      },
+      {
+        "id": "icon_heart",
+        "name": "Heart Icon",
+        "file": "ui/icon_heart.png",
+        "tags": ["icon", "health", "ui"],
+        "dimensions": { "width": 32, "height": 32 },
+        "format": "png"
+      },
+      {
+        "id": "icon_coin",
+        "name": "Coin Icon",
+        "file": "ui/icon_coin.png",
+        "tags": ["icon", "coin", "score", "ui"],
+        "dimensions": { "width": 32, "height": 32 },
+        "format": "png"
+      }
+    ]
+  },
+  "metadata": {
+    "totalCount": 20,
+    "lastUpdated": "2026-03-22T00:00:00Z",
+    "source": "placeholder"
+  }
+}

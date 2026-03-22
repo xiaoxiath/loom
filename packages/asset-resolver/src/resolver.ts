@@ -57,47 +57,110 @@ export class AssetResolver {
    * Initialize asset library with placeholder entries
    */
   private initializeLibrary(): void {
-    // Placeholder library - in production, this would load from actual asset files
-    const placeholderSprites: AssetLibraryEntry[] = [
-      {
-        id: 'player_default',
-        type: 'sprite',
-        name: 'Default Player',
-        tags: ['player', 'character', 'default'],
-        path: '/assets/sprites/player_default.png',
-        metadata: { width: 32, height: 32, format: 'png' },
-      },
-      {
-        id: 'enemy_default',
-        type: 'sprite',
-        name: 'Default Enemy',
-        tags: ['enemy', 'character', 'default'],
-        path: '/assets/sprites/enemy_default.png',
-        metadata: { width: 32, height: 32, format: 'png' },
-      },
-      {
-        id: 'obstacle_default',
-        type: 'sprite',
-        name: 'Default Obstacle',
-        tags: ['obstacle', 'default'],
-        path: '/assets/sprites/obstacle_default.png',
-        metadata: { width: 32, height: 32, format: 'png' },
-      },
-    ];
+    // Try to load from asset-manifest.json
+    try {
+      // In a real implementation, this would load from actual file
+      // For now, we'll use hardcoded entries that match asset-manifest.json
 
-    const placeholderBackgrounds: AssetLibraryEntry[] = [
-      {
-        id: 'sky_default',
-        type: 'background',
-        name: 'Default Sky Background',
-        tags: ['sky', 'background', 'default', 'blue'],
-        path: '/assets/backgrounds/sky_default.png',
-        metadata: { width: 1920, height: 1080, format: 'png' },
-      },
-    ];
+      const sprites: AssetLibraryEntry[] = [
+        {
+          id: 'player_default',
+          type: 'sprite',
+          name: 'Default Player',
+          tags: ['player', 'character', 'default'],
+          path: '/assets/sprites/player_default.png',
+          metadata: { width: 32, height: 32, format: 'png' },
+        },
+        {
+          id: 'player_bird',
+          type: 'sprite',
+          name: 'Bird Player',
+          tags: ['player', 'bird', 'flappy', 'character'],
+          path: '/assets/sprites/player_bird.png',
+          metadata: { width: 34, height: 24, format: 'png' },
+        },
+        {
+          id: 'player_ship',
+          type: 'sprite',
+          name: 'Spaceship Player',
+          tags: ['player', 'ship', 'spaceship', 'shooter', 'character'],
+          path: '/assets/sprites/player_ship.png',
+          metadata: { width: 32, height: 32, format: 'png' },
+        },
+        {
+          id: 'player_runner',
+          type: 'sprite',
+          name: 'Runner Player',
+          tags: ['player', 'runner', 'character'],
+          path: '/assets/sprites/player_runner.png',
+          metadata: { width: 32, height: 32, format: 'png' },
+        },
+        {
+          id: 'enemy_default',
+          type: 'sprite',
+          name: 'Default Enemy',
+          tags: ['enemy', 'character', 'default'],
+          path: '/assets/sprites/enemy_default.png',
+          metadata: { width: 32, height: 32, format: 'png' },
+        },
+        {
+          id: 'obstacle_pipe',
+          type: 'sprite',
+          name: 'Pipe Obstacle',
+          tags: ['obstacle', 'pipe', 'flappy'],
+          path: '/assets/sprites/obstacle_pipe.png',
+          metadata: { width: 52, height: 320, format: 'png' },
+        },
+        {
+          id: 'obstacle_asteroid',
+          type: 'sprite',
+          name: 'Asteroid',
+          tags: ['obstacle', 'asteroid', 'space', 'shooter'],
+          path: '/assets/sprites/obstacle_asteroid.png',
+          metadata: { width: 48, height: 48, format: 'png' },
+        },
+        {
+          id: 'obstacle_spike',
+          type: 'sprite',
+          name: 'Spike Obstacle',
+          tags: ['obstacle', 'spike', 'runner'],
+          path: '/assets/sprites/obstacle_spike.png',
+          metadata: { width: 32, height: 32, format: 'png' },
+        },
+      ];
 
-    this.library.set('sprite', placeholderSprites);
-    this.library.set('background', placeholderBackgrounds);
+      const backgrounds: AssetLibraryEntry[] = [
+        {
+          id: 'sky_blue',
+          type: 'background',
+          name: 'Blue Sky',
+          tags: ['sky', 'background', 'blue', 'default'],
+          path: '/assets/backgrounds/sky_blue.png',
+          metadata: { width: 1920, height: 1080, format: 'png' },
+        },
+        {
+          id: 'space_stars',
+          type: 'background',
+          name: 'Starfield Space',
+          tags: ['space', 'background', 'stars', 'shooter'],
+          path: '/assets/backgrounds/space_stars.png',
+          metadata: { width: 1920, height: 1080, format: 'png' },
+        },
+        {
+          id: 'ground_grass',
+          type: 'background',
+          name: 'Grass Ground',
+          tags: ['ground', 'background', 'grass', 'platformer'],
+          path: '/assets/backgrounds/ground_grass.png',
+          metadata: { width: 1920, height: 1080, format: 'png' },
+        },
+      ];
+
+      this.library.set('sprite', sprites);
+      this.library.set('background', backgrounds);
+    } catch (error) {
+      console.warn('Failed to load asset library:', error);
+    }
   }
 
   /**

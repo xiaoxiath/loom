@@ -72,6 +72,14 @@ packages/
 ├── code-generator/          ✅ 代码生成器
 ├── asset-resolver/          ✅ 资源解析器（8 tests）
 └── orchestrator/            📝 基础结构
+
+assets/                      ✅ 资源库（已配置）
+├── sprites/                 ✅ 精灵图目录
+├── backgrounds/             ✅ 背景图目录
+├── audio/                   ✅ 音频目录
+├── ui/                      ✅ UI 元素目录
+├── asset-manifest.json      ✅ 资源清单
+└── setup-assets.sh          ✅ 资源设置脚本
 ```
 
 ### 测试覆盖率
@@ -138,8 +146,11 @@ Phaser.js 游戏
 - [x] 资源缓存系统
 - [x] 从 GameSpec 提取隐式资源
 - [x] 测试覆盖（8/8 tests passing）
+- [x] 创建资源目录结构（assets/） ✨ NEW
+- [x] 创建资源清单（asset-manifest.json） ✨ NEW
+- [x] 创建占位符生成脚本 ✨ NEW
 - [ ] AI 生成资源（可选）
-- [ ] 集成 Kenney 资源库（需要实际资源文件）
+- [ ] 集成 Kenney 资源库（需要下载资源文件）
 
 #### 3. 运行时验证
 - [ ] 实际运行生成的游戏
