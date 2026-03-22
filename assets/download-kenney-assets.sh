@@ -22,21 +22,16 @@ echo -e "${BLUE}🎨 Loom Asset Downloader${NC}"
 echo -e "${BLUE}========================${NC}"
 echo ""
 
-# Check for wget or curl
-if command -v wget &> /dev/null; then
-    DOWNLOAD_CMD="wget"
-elif command -v curl &> /dev/null; then
-    DOWNLOAD_CMD="curl -O"
-else
-    echo -e "${YELLOW}Warning: Neither wget nor curl found.${NC}"
-    echo "Please install wget or curl to use automated download."
-    echo "Alternatively, follow the manual download guide in KENNEY-DOWNLOAD-GUIDE.md"
+# Check for curl (macOS has curl by default)
+if ! command -v curl &> /dev/null; then
+    echo -e "${YELLOW}Error: curl not found.${NC}"
+    echo "Please install curl to use automated download."
     exit 1
 fi
 
 # Check for unzip
 if ! command -v unzip &> /dev/null; then
-    echo -e "${YELLOW}Warning: unzip not found.${NC}"
+    echo -e "${YELLOW}Error: unzip not found.${NC}"
     echo "Please install unzip to extract downloaded assets."
     exit 1
 fi
@@ -45,14 +40,6 @@ fi
 mkdir -p "$TEMP_DIR"
 mkdir -p "$SPRITES_DIR" "$BACKGROUNDS_DIR" "$AUDIO_DIR/sfx" "$AUDIO_DIR/music" "$UI_DIR"
 
-# Asset pack URLs
-declare -A PACKS=(
-    ["platformer"]="https://kenney.nl/content/3-assets/8-platformer-pack-redux/platformer-pack-redux.zip"
-    ["spaceshooter"]="https://kenney.nl/content/3-assets/12-space-shooter-extension/space-shooter-extension.zip"
-    ["racing"]="https://kenney.nl/content/3-assets/5-racing-pack/racing-pack.zip"
-    ["ui"]="https://kenney.nl/content/3-assets/2-ui-pack/ui-pack.zip"
-)
-
 # Download function
 download_pack() {
     local name=$1
@@ -60,13 +47,13 @@ download_pack() {
 
     echo -e "${BLUE}📦 Downloading $name...${NC}"
 
-    if [ "$DOWNLOAD_CMD" = "wget" ]; then
-        wget -q --show-progress "$url" -O "$TEMP_DIR/$name.zip"
+    if curl -L "$url" -o "$TEMP_DIR/$name.zip" --progress-bar; then
+        echo -e "${GREEN}✓ Downloaded $name${NC}"
+        return 0
     else
-        curl -# -L "$url" -o "$TEMP_DIR/$name.zip"
+        echo -e "${YELLOW}✗ Failed to download $name${NC}"
+        return 1
     fi
-
-    echo -e "${GREEN}✓ Downloaded $name${NC}"
 }
 
 # Extract and organize
@@ -76,13 +63,13 @@ organize_platformer() {
     cd "$TEMP_DIR"
     unzip -q "platformer.zip"
 
-    # Copy sprites
-    find . -name "*.png" -path "*/Players/*" -exec cp {} "$SPRITES_DIR/" \;
-    find . -name "*.png" -path "*/Enemies/*" -exec cp {} "$SPRITES_DIR/" \;
-    find . -name "*.png" -path "*/Obstacles/*" -exec cp {} "$SPRITES_DIR/" \;
+    # Copy sprites (players, enemies, obstacles)
+    find . -name "*.png" -path "*/Players/*" -exec cp {} "$SPRITES_DIR/" \; 2>/dev/null || true
+    find . -name "*.png" -path "*/Enemies/*" -exec cp {} "$SPRITES_DIR/" \; 2>/dev/null || true
+    find . -name "*.png" -path "*/Obstacles/*" -exec cp {} "$SPRITES_DIR/" \; 2>/dev/null || true
 
-    # Copy backgrounds/tiles
-    find . -name "*.png" -path "*/Tiles/*" -exec cp {} "$BACKGROUNDS_DIR/" \;
+    # Copy backgrounds (tiles)
+    find . -name "*.png" -path "*/Tiles/*" -exec cp {} "$BACKGROUNDS_DIR/" \; 2>/dev/null || true
 
     cd - > /dev/null
     echo -e "${GREEN}✓ Platformer Pack organized${NC}"
@@ -94,13 +81,13 @@ organize_spaceshooter() {
     cd "$TEMP_DIR"
     unzip -q "spaceshooter.zip"
 
-    # Copy sprites
-    find . -name "*.png" -path "*/Ships/*" -exec cp {} "$SPRITES_DIR/" \;
-    find . -name "*.png" -path "*/Meteors/*" -exec cp {} "$SPRITES_DIR/" \;
-    find . -name "*.png" -path "*/Projectiles/*" -exec cp {} "$SPRITES_DIR/" \;
+    # Copy sprites (ships, meteors, projectiles)
+    find . -name "*.png" -path "*/Ships/*" -exec cp {} "$SPRITES_DIR/" \; 2>/dev/null || true
+    find . -name "*.png" -path "*/Meteors/*" -exec cp {} "$SPRITES_DIR/" \; 2>/dev/null || true
+    find . -name "*.png" -path "*/Projectiles/*" -exec cp {} "$SPRITES_DIR/" \; 2>/dev/null || true
 
     # Copy backgrounds
-    find . -name "*.png" -path "*/Backgrounds/*" -exec cp {} "$BACKGROUNDS_DIR/" \;
+    find . -name "*.png" -path "*/Backgrounds/*" -exec cp {} "$BACKGROUNDS_DIR/" \; 2>/dev/null || true
 
     cd - > /dev/null
     echo -e "${GREEN}✓ Space Shooter Pack organized${NC}"
@@ -112,12 +99,12 @@ organize_racing() {
     cd "$TEMP_DIR"
     unzip -q "racing.zip"
 
-    # Copy sprites
-    find . -name "*.png" -path "*/Vehicles/*" -exec cp {} "$SPRITES_DIR/" \;
-    find . -name "*.png" -path "*/Obstacles/*" -exec cp {} "$SPRITES_DIR/" \;
+    # Copy sprites (vehicles, obstacles)
+    find . -name "*.png" -path "*/Vehicles/*" -exec cp {} "$SPRITES_DIR/" \; 2://dev/null || true
+    find . -name "*.png" -path "*/Obstacles/*" -exec cp {} "$SPRITES_DIR/" \; 2>/dev/null || true
 
     # Copy backgrounds
-    find . -name "*.png" -path "*/Backgrounds/*" -exec cp {} "$BACKGROUNDS_DIR/" \;
+    find . -name "*.png" -path "*/Backgrounds/*" -exec cp {} "$BACKGROUNDS_DIR/" \; 2>/dev/null || true
 
     cd - > /dev/null
     echo -e "${GREEN}✓ Racing Pack organized${NC}"
@@ -129,9 +116,9 @@ organize_ui() {
     cd "$TEMP_DIR"
     unzip -q "ui.zip"
 
-    # Copy UI elements
-    find . -name "*.png" -path "*/Buttons/*" -exec cp {} "$UI_DIR/" \;
-    find . -name "*.png" -path "*/Icons/*" -exec cp {} "$UI_DIR/" \;
+    # Copy UI elements (buttons, icons)
+    find . -name "*.png" -path "*/Buttons/*" -exec cp {} "$UI_DIR/" \; 2>/dev/null || true
+    find . -name "*.png" -path "*/Icons/*" -exec cp {} "$UI_DIR/" \; 2>/dev/null || true
 
     cd - > /dev/null
     echo -e "${GREEN}✓ UI Pack organized${NC}"
@@ -144,13 +131,23 @@ read -r response
 
 if [[ ! "$response" =~ ^[Yy]$ ]]; then
     echo "Download cancelled."
+    rm -rf "$TEMP_DIR"
     exit 0
 fi
 
+echo ""
+echo -e "${BLUE}Starting downloads...${NC}"
+echo ""
+
 # Download all packs
-for pack in "${!PACKS[@]}"; do
-    download_pack "$pack" "${PACKS[$pack]}"
-done
+download_pack "platformer" "https://kenney.nl/content/3-assets/8-platformer-pack-redux/platformer-pack-redux.zip"
+download_pack "spaceshooter" "https://kenney.nl/content/3-assets/12-space-shooter-extension/space-shooter-extension.zip"
+download_pack "racing" "https://kenney.nl/content/3-assets/5-racing-pack/racing-pack.zip"
+download_pack "ui" "https://kenney.nl/content/3-assets/2-ui-pack/ui-pack.zip"
+
+echo ""
+echo -e "${BLUE}Organizing assets...${NC}"
+echo ""
 
 # Organize all packs
 organize_platformer
@@ -159,9 +156,9 @@ organize_racing
 organize_ui
 
 # Count assets
-SPRITE_COUNT=$(find "$SPRITES_DIR" -name "*.png" | wc -l)
-BG_COUNT=$(find "$BACKGROUNDS_DIR" -name "*.png" | wc -l)
-UI_COUNT=$(find "$UI_DIR" -name "*.png" | wc -l)
+SPRITE_COUNT=$(find "$SPRITES_DIR" -name "*.png" 2>/dev/null | wc -l | tr -d ' ')
+BG_COUNT=$(find "$BACKGROUNDS_DIR" -name "*.png" 2>/dev/null | wc -l | tr -d ' ')
+UI_COUNT=$(find "$UI_DIR" -name "*.png" 2>/dev/null | wc -l | tr -d ' ')
 
 echo ""
 echo -e "${GREEN}✅ Download Complete!${NC}"
