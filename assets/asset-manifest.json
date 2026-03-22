@@ -5,66 +5,66 @@
       {
         "id": "player_default",
         "name": "Default Player",
-        "file": "sprites/player_default.png",
+        "file": "sprites/player_default.svg",
         "tags": ["player", "character", "default"],
         "dimensions": { "width": 32, "height": 32 },
-        "format": "png"
+        "format": "svg"
       },
       {
         "id": "player_bird",
         "name": "Bird Player",
-        "file": "sprites/player_bird.png",
+        "file": "sprites/player_bird.svg",
         "tags": ["player", "bird", "flappy", "character"],
         "dimensions": { "width": 34, "height": 24 },
-        "format": "png"
+        "format": "svg"
       },
       {
         "id": "player_ship",
         "name": "Spaceship Player",
-        "file": "sprites/player_ship.png",
+        "file": "sprites/player_ship.svg",
         "tags": ["player", "ship", "spaceship", "shooter", "character"],
         "dimensions": { "width": 32, "height": 32 },
-        "format": "png"
+        "format": "svg"
       },
       {
         "id": "player_runner",
         "name": "Runner Player",
-        "file": "sprites/player_runner.png",
+        "file": "sprites/player_runner.svg",
         "tags": ["player", "runner", "character"],
         "dimensions": { "width": 32, "height": 32 },
-        "format": "png"
+        "format": "svg"
       },
       {
         "id": "enemy_default",
         "name": "Default Enemy",
-        "file": "sprites/enemy_default.png",
+        "file": "sprites/enemy_default.svg",
         "tags": ["enemy", "character", "default"],
         "dimensions": { "width": 32, "height": 32 },
-        "format": "png"
+        "format": "svg"
       },
       {
         "id": "obstacle_pipe",
         "name": "Pipe Obstacle",
-        "file": "sprites/obstacle_pipe.png",
+        "file": "sprites/obstacle_pipe.svg",
         "tags": ["obstacle", "pipe", "flappy"],
         "dimensions": { "width": 52, "height": 320 },
-        "format": "png"
+        "format": "svg"
       },
       {
         "id": "obstacle_asteroid",
         "name": "Asteroid",
-        "file": "sprites/obstacle_asteroid.png",
+        "file": "sprites/obstacle_asteroid.svg",
         "tags": ["obstacle", "asteroid", "space", "shooter"],
         "dimensions": { "width": 48, "height": 48 },
-        "format": "png"
+        "format": "svg"
       },
       {
         "id": "obstacle_spike",
         "name": "Spike Obstacle",
-        "file": "sprites/obstacle_spike.png",
+        "file": "sprites/obstacle_spike.svg",
         "tags": ["obstacle", "spike", "runner"],
         "dimensions": { "width": 32, "height": 32 },
-        "format": "png"
+        "format": "svg"
       },
       {
         "id": "bullet_default",
