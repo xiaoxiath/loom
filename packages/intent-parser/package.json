@@ -22,6 +22,7 @@
     "clean": "rm -rf dist node_modules"
   },
   "dependencies": {
+    "@loom/asset-resolver": "workspace:*",
     "@loom/code-generator": "workspace:*",
     "@loom/core": "workspace:*",
     "@loom/llm-client": "workspace:*",

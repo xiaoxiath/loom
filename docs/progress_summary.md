@@ -129,6 +129,7 @@ Phaser.js 游戏
 - [x] 添加 adapter bindings 生成
 - [x] 统一使用 Jest 测试框架
 - [x] 准备 3 个端到端测试用例（Flappy Bird, Space Shooter, Endless Runner）
+- [x] 集成 Asset Resolver 到 E2E 流程 ✨ NEW
 - [ ] 测试生成的游戏是否可运行（需要浏览器环境）
 
 #### 2. ✅ Asset Resolution 系统
@@ -285,18 +286,20 @@ Phaser.js 游戏
 我们有一个完整的流程：
 - ✅ 自然语言 → GameSpec (Intent Parser)
 - ✅ GameSpec → Graphs (Planner)
-- ✅ Graphs → Code (Code Generator)
+- ✅ Graphs → Resolved Assets (Asset Resolver) ✨ NEW
+- ✅ Graphs + Assets → Code (Code Generator)
 - ✅ E2E 测试验证完整流程（3 个测试用例全部通过）
 
 **测试覆盖**：
-- 64/64 单元测试和集成测试全部通过（100%）
-- 包含 3 个完整的 E2E 测试
+- 72+ 单元测试和集成测试全部通过（100%）
+- 包含 3 个完整的 E2E 测试，验证从自然语言到游戏代码的完整流程
 
 **下一步重点**：
 1. ~~完成 E2E 集成测试~~ ✅ 已完成
-2. 实现 Asset Resolution
+2. ~~实现 Asset Resolution~~ ✅ 已完成
 3. 创建可用的演示（浏览器环境）
 4. 验证生成的游戏可玩性
+5. 添加实际资源文件（Kenney assets）
 
 **预计时间**：
 - ~~E2E 集成：~~ ✅ 已完成

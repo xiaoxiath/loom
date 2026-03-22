@@ -2,13 +2,14 @@
  * End-to-End Integration Test
  *
  * Tests the complete pipeline:
- * Natural Language → Intent Parser → GameSpec → Planner → Graphs → Code Generator → Game
+ * Natural Language → Intent Parser → GameSpec → Planner → Graphs → Asset Resolver → Code Generator → Game
  */
 
 import { IntentParserAgent } from './intent-parser';
 import { createMockLLMClient } from '@loom/llm-client';
 import { PlannerAgent } from '@loom/planner';
 import { CodeGenerator } from '@loom/code-generator';
+import { AssetResolver } from '@loom/asset-resolver';
 import { generateAdapterBindings } from './adapter-bindings';
 
 describe('E2E Pipeline', () => {
@@ -86,11 +87,27 @@ describe('E2E Pipeline', () => {
       expect(planResult.componentGraph).toBeDefined();
       expect(planResult.systemGraph).toBeDefined();
 
-      // Step 3: Generate Adapter Bindings
+      // Step 3: Asset Resolution
+      const assetResolver = new AssetResolver({
+        enableCache: true,
+        enablePlaceholders: true,
+      });
+      const assetResult = await assetResolver.resolveFromGameSpec(parseResult.spec);
+      expect(assetResult.resolved).toBeDefined();
+      expect(assetResult.resolved.length).toBeGreaterThan(0);
+      expect(assetResult.metadata.totalAssets).toBeGreaterThan(0);
+
+      // Verify assets are resolved
+      assetResult.resolved.forEach((asset) => {
+        expect(asset.resolvedUrl).toBeDefined();
+        expect(asset.sourceType).toBeDefined();
+      });
+
+      // Step 4: Generate Adapter Bindings
       const adapterBindings = generateAdapterBindings(planResult.componentGraph);
       expect(adapterBindings).toBeInstanceOf(Array);
 
-      // Step 4: Code Generation
+      // Step 5: Code Generation
       const codeGenerator = new CodeGenerator();
       const genResult = codeGenerator.generate({
         gameSpec: parseResult.spec,

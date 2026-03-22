@@ -229,6 +229,9 @@ importers:
 
   packages/intent-parser:
     dependencies:
+      '@loom/asset-resolver':
+        specifier: workspace:*
+        version: link:../asset-resolver
       '@loom/code-generator':
         specifier: workspace:*
         version: link:../code-generator
