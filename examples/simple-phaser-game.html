@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loom Simple Game Preview</title>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: #1a1a1a;
+        }
+        #game-container {
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+        .controls {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container"></div>
+    <div class="controls">
+        Controls: SPACE = Jump | ARROWS = Move
+    </div>
+
+    <script>
+        // Simple Phaser game configuration
+        const config = {
+            type: Phaser.AUTO,
+            width: 800,
+            height: 600,
+            parent: 'game-container',
+            backgroundColor: '#87CEEB',
+            physics: {
+                default: 'arcade',
+                arcade: {
+                    gravity: { y: 300 },
+                    debug: false
+                }
+            },
+            scene: {
+                preload: preload,
+                create: create,
+                update: update
+            }
+        };
+
+        const game = new Phaser.Game(config);
+
+        let player;
+        let obstacles;
+        let score = 0;
+        let scoreText;
+
+        function preload() {
+            // Create simple colored rectangles as placeholder graphics
+            // In a real app, we'd load actual sprite images
+
+            // Graphics will be created in create()
+        }
+
+        function create() {
+            // Add ground
+            const ground = this.add.rectangle(400, 580, 800, 40, 0x4CAF50);
+            this.physics.add.existing(ground, true);
+            ground.body.immovable = true;
+
+            // Create player (yellow bird)
+            player = this.add.rectangle(100, 400, 32, 24, 0xFFC107);
+            this.physics.add.existing(player, 'arcade');
+            player.setCollideWorldBounds(true);
+            player.setBounce(0.5, 0.5);
+            player.setDepth(1);
+
+            // Create obstacles (green pipes)
+            obstacles = this.physics.add.group();
+
+            for (let i = 0; i < 5; i++) {
+                const pipe = this.add.rectangle(
+                    700 + (i * 300),
+                    Phaser.Math.Between(100, 500),
+                    52,
+                    150,
+                    0x2E7D32
+                );
+                this.physics.add.existing(pipe, true);
+                pipe.body.immovable = true;
+                pipe.body.allowGravity = false;
+                obstacles.add(pipe);
+            }
+
+            // Add collision between player and ground
+            this.physics.add.collider(player, ground);
+
+            // Add collision between player and obstacles
+            this.physics.add.overlap(player, obstacles, hitObstacle, this);
+
+            // Score display
+            scoreText = this.add.text(16, 16, 'Score: 0', {
+                fontSize: '20px',
+                fill: '#ffffff',
+                fontFamily: 'Arial'
+            });
+
+            // Instructions
+            this.add.text(400, 300, 'Press SPACE to jump!\nAvoid the green pipes!', {
+                fontSize: '18px',
+                fill: '#ffffff',
+                fontFamily: 'Arial'
+            });
+
+            // Auto-scroll the world
+            this.cameras.main.startFollow(player, true, 0, 0);
+
+            // Move obstacles left
+            this.time.addEvent({
+                delay: 0,
+                callback: () => {
+                    obstacles.getChildren().forEach(pipe => {
+                        pipe.setVelocityX(-150, 0);
+                    });
+                },
+                loop: -1
+            });
+        }
+
+        function update() {
+            // Player controls
+            if (this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE)) {
+                player.setVelocityY(-200);
+            }
+
+            // Horizontal movement
+            if (this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.LEFT)) {
+                player.setVelocityX(-160);
+            } else if (this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT)) {
+                player.setVelocityX(160);
+            } else {
+                player.setVelocityX(0);
+            }
+
+            // Update score based on distance traveled
+            const newScore = Math.floor(player.x / 10);
+            if (newScore > score) {
+                score = newScore;
+                scoreText.setText('Score: ' + score);
+            }
+
+            // Check if player fell off the bottom
+            if (player.y > 650) {
+                this.scene.restart();
+                score = 0;
+                scoreText.setText('Score: 0');
+            }
+        }
+
+        function hitObstacle(player, obstacle) {
+            // Flash red
+            this.cameras.main.flash(200);
+
+            // Reset game
+            this.time.delayedCall(() => {
+                this.scene.restart();
+                score = 0;
+                scoreText.setText('Score: 0');
+            }, 500, this);
+        }
+    </script>
+</body>
+</html>

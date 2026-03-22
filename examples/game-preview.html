@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="Django 799/xhtml+ WIDTH=device-width, initial-scale=1.0">
+    <title>Loom Game Preview</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        #container {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            max-width: 1200px;
+            height: 100vh;
+            background: white;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        #controls {
+            padding: 20px;
+            background: #f5f5f5;
+            border-bottom: 1px solid #e1e1e1;
+        }
+        #controls input {
+            padding: 12px 20px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 100%;
+            max-width: 600px;
+            box-sizing: border-box;
+        }
+        #controls button {
+            padding: 12px 24px;
+            font-size: 16px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        #controls button:hover {
+            background: #45a049;
+        }
+        #preview {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: calc(100vh - 140px);
+            background: #f5f5f5;
+        }
+        #gameCanvas {
+            border: 2px solid #ddd;
+            background: #000;
+        }
+        #loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+        #loading .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #4CAF50;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        #error {
+            color: #f44336;
+            padding: 20px;
+            text-align: center;
+        }
+        #success {
+            color: #4CAF50;
+            padding: 20px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="controls">
+            <h1 style="margin: 0 0 10px 0; font-size: 24px;">🎮 Loom Game Preview</h1>
+            <p style="margin: 5px 0 15px 0; color: #666;">Enter a game description below:</p>
+            <input type="text" id="promptInput" placeholder="e.g., Create a Flappy Bird-style game where a bird jumps between pipes">
+            <button id="generateBtn">Generate Game</button>
+        </div>
+
+        <div id="preview">
+            <div id="loading" style="display: none;">
+                <div class="spinner"></div>
+                <p>Generating game...</p>
+            </div>
+            <div id="error" style="display: none;"></div>
+            <div id="success" style="display: none;"></div>
+            <canvas id="gameCanvas" width="800" height="600"></canvas>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+    <script>
+        const promptInput = document.getElementById('promptInput');
+        const generateBtn = document.getElementById('generateBtn');
+        const loadingDiv = document.getElementById('loading');
+        const errorDiv = document.getElementById('error');
+        const successDiv = document.getElementById('success');
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let game = null;
+        let gameSpec = null;
+
+        generateBtn.addEventListener('click', async () => {
+            const prompt = promptInput.value.trim();
+
+            if (!prompt) {
+                alert('Please enter a game description');
+                return;
+            }
+
+            // Show loading
+            loadingDiv.style.display = 'flex';
+            errorDiv.style.display = 'none';
+            successDiv.style.display = 'none';
+            generateBtn.disabled = true;
+
+            try {
+                // In a real app, this would call the Loom API
+                // For demo, we'll use a mock GameSpec
+                gameSpec = {
+                    meta: {
+                        title: 'Demo Game',
+                        genre: 'jumper',
+                        camera: 'side',
+                        dimension: '2D',
+                        version: '1.0'
+                    },
+                    settings: {
+                        gravity: 980,
+                        backgroundColor: '#87CEEB',
+                        worldWidth: 800,
+                        worldHeight: 600
+                    },
+                    scene: {
+                        type: 'single',
+                        cameraFollow: 'player',
+                        spawn: { x: 100, y: 300 }
+                    },
+                    entities: [
+                        {
+                            id: 'player',
+                            type: 'player',
+                            sprite: 'player_bird',
+                            position: { x: 100, y: 300 },
+                            physics: { gravity: true, collidable: true },
+                            components: ['jump']
+                        },
+                        {
+                            id: 'obstacle',
+                            type: 'obstacle',
+                            sprite: 'obstacle_pipe',
+                            position: { x: 600, y: 150 },
+                            physics: { gravity: false, collidable: true },
+                            components: []
+                        },
+                        {
+                            id: 'obstacle2',
+                            type: 'obstacle',
+                            sprite: 'obstacle_pipe',
+                            position: { x: 600, y: 450 },
+                            physics: { gravity: false, collidable: true },
+                            components: []
+                        }
+                    ],
+                    systems: ['physics', 'collision', 'input'],
+                    mechanics: ['jump', 'gravity', 'collision', 'avoid'],
+                    scoring: { type: 'distance', increment: 1 },
+                    ui: { hud: ['score'], startScreen: true, gameOverScreen: true },
+                    assets: [],
+                    extensions: {}
+                };
+
+                // Create game using Phaser
+                const config = {
+                    type: Phaser.AUTO,
+                    width: 800,
+                    height: 600,
+                    physics: {
+                    default: 'arcade',
+                    arcade: {
+                                gravity: { y: 980 },
+                                debug: false
+                            }
+                    },
+                    scene: {
+                        preload: 'game',
+                        create: create
+                    }
+                };
+
+                game = new Phaser.Game(config);
+
+                // Create game scene
+                const scene = {
+                    key: 'game',
+                    active: true,
+                    create: function() {
+                        // Add background
+                        this.add.rectangle(0, 0, 800, 600, 0x87CEEB);
+
+                        // Add player
+                        const player = this.physics.add.sprite(100, 300, 'player_bird');
+                        player.setCollideWorldBounds(true);
+                        player.setBounce(0.5, 0.5);
+
+                        // Add obstacles
+                        const obstacle1 = this.physics.add.sprite(600, 150, 'obstacle_pipe', true);
+                        obstacle1.setImmovable(true);
+                        obstacle1.setCollideWorldBounds(true);
+
+                        const obstacle2 = this.physics.add.sprite(600, 450, 'obstacle_pipe', true);
+                        obstacle2.setImmovable(true);
+                        obstacle2.setCollideWorldBounds(true);
+
+                        // Input handling
+                        this.input.keyboard.on('keydown-SPACE', () => {
+                            player.setVelocityY(-350);
+                        });
+
+                        this.input.keyboard.on('keyup-SPACE', () => {
+                            player.setVelocityY(0);
+                        });
+
+                        // Collision detection
+                        this.physics.add.overlap(player, obstacle1, () => {
+                            this.scene.restart('game');
+                        });
+
+                        this.physics.add.overlap(player, obstacle2, () => {
+                            this.scene.restart('game');
+                        });
+
+                        // Update score
+                        this.events.on('updateScore', (score) => {
+                            console.log('Score:', score);
+                        });
+
+                        // Emit initial score
+                        this.events.emit('updateScore', 0);
+                    }
+                };
+                game.scene.add('game', scene);
+
+                // Hide loading, show success
+                loadingDiv.style.display = 'none';
+                successDiv.style.display = 'block';
+                successDiv.textContent = 'Game generated! Press SPACE to jump!';
+                generateBtn.disabled = false;
+
+            } catch (error) {
+                console.error('Game generation error:', error);
+                loadingDiv.style.display = 'none';
+                errorDiv.style.display = 'block';
+                errorDiv.textContent = 'Failed to generate game. Please try again.';
+                generateBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
