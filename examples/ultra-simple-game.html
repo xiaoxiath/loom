@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loom Simple Jump Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        #game-container {
+            text-align: center;
+        }
+        canvas {
+            border-radius: 8px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+        .info {
+            color: white;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+        <script>
+            // Simple Phaser 3 game
+            const config = {
+                type: Phaser.AUTO,
+                width: 800,
+                height: 600,
+                physics: {
+                    default: 'arcade',
+                    arcade: {
+                        gravity: { y: 800 },
+                        debug: false
+                    }
+                },
+                scene: {
+                    preload: preload,
+                    create: create,
+                    update: update
+                }
+            };
+
+            const game = new Phaser.Game(config);
+            let player;
+            let platforms;
+            let cursors;
+            let score = 0;
+            let scoreText;
+
+            function preload() {
+                // No external assets needed
+            }
+
+            function create() {
+                // Sky background
+                this.cameras.main.setBackgroundColor('#87CEEB');
+
+                // Platforms (ground)
+                platforms = this.physics.add.staticGroup();
+                const ground = platforms.create(400, 568, null);
+                ground.setSize(800, 64);
+                ground.setTint(0x4CAF50);
+                ground.refreshBody();
+
+                // Player
+                player = this.physics.add.sprite(100, 450, null);
+                player.setSize(40, 40);
+                player.setTint(0xFFC107); // Yellow
+                player.setBounce(0.2);
+                player.setCollideWorldBounds(true);
+
+                // Score
+                scoreText = this.add.text(16, 16, 'Score: 0', {
+                    fontSize: '24px',
+                    fill: '#ffffff',
+                    fontFamily: 'Arial'
+                });
+
+                // Instructions
+                this.add.text(400, 100, 'Press SPACE or UP to jump!\nCollect coins by moving right!', {
+                    fontSize: '20px',
+                    fill: '#ffffff',
+                    fontFamily: 'Arial'
+                }).setOrigin(0.5, 0);
+
+                // Collisions
+                this.physics.add.collider(player, platforms);
+
+                // Input
+                cursors = this.input.keyboard.createCursorKeys();
+            }
+
+            function update() {
+                // Horizontal movement
+                if (cursors.left.isDown) {
+                    player.setVelocityX(-160);
+                } else if (cursors.right.isDown) {
+                    player.setVelocityX(160);
+
+                    // Increase score when moving right
+                    score += 1;
+                    scoreText.setText('Score: ' + score);
+                } else {
+                    player.setVelocityX(0);
+                }
+
+                // Jump
+                if ((cursors.up.isDown || cursors.space.isDown) && player.body.touching.down) {
+                    player.setVelocityY(-500);
+                }
+
+                // Reset score if player falls
+                if (player.y > 650) {
+                    score = 0;
+                    scoreText.setText('Score: 0');
+                    player.setPosition(100, 450);
+                }
+            }
+        </script>
+        <div class="info">
+            <strong>Controls:</strong> Arrow keys or SPACE to jump | Move right to score points
+        </div>
+    </div>
+</body>
+</html>

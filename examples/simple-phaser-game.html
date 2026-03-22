@@ -160,7 +160,7 @@
 
             // Check if player fell off the bottom
             if (player.y > 650) {
-                resetGame.call(this);
+                resetGame(this);
             }
         }
 
@@ -169,11 +169,14 @@
             this.cameras.main.flash(200);
 
             // Reset game after short delay
-            this.time.delayedCall(500, resetGame, this);
+            const scene = this;
+            this.time.delayedCall(500, function() {
+                resetGame(scene);
+            });
         }
 
-        function resetGame() {
-            this.scene.restart();
+        function resetGame(scene) {
+            scene.scene.restart();
             score = 0;
             scoreText.setText('Score: 0');
         }
