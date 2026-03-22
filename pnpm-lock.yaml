@@ -84,6 +84,9 @@ importers:
       '@loom/planner':
         specifier: workspace:*
         version: link:../planner
+      '@loom/runtime-adapter':
+        specifier: workspace:*
+        version: link:../runtime-adapter
     devDependencies:
       '@types/jest':
         specifier: ^29.5.0
