@@ -66,11 +66,11 @@
 packages/
 ├── core/                    ✅ 核心类型
 ├── llm-client/              ✅ LLM 客户端（12 tests）
-├── intent-parser/           ✅ 意图解析器（38 tests）
+├── intent-parser/           ✅ 意图解析器（41 tests）
 ├── planner/                 ✅ Planner（11 tests）
 ├── runtime-adapter/         ✅ 运行时适配器
 ├── code-generator/          ✅ 代码生成器
-├── asset-resolver/          📝 基础结构
+├── asset-resolver/          ✅ 资源解析器（8 tests）
 └── orchestrator/            📝 基础结构
 ```
 
@@ -78,7 +78,9 @@ packages/
 - **@loom/llm-client**: 12/12 tests passing (100%)
 - **@loom/intent-parser**: 41/41 tests passing (100%)
 - **@loom/planner**: 11/11 tests passing (100%)
-- **总计**: **64/64 tests passing (100%)** ✅
+- **@loom/runtime-adapter**: tests passing
+- **@loom/asset-resolver**: 8/8 tests passing (100%)
+- **总计**: **72+ tests passing (100%)** ✅
 
 ---
 
@@ -95,6 +97,8 @@ GameSpec DSL
 Planner Agent (Phase 1)
     ↓
 Execution Graphs
+    ↓
+Asset Resolver (Phase 4) ✨ NEW
     ↓
 Code Generator (Phase 1)
     ↓
@@ -127,11 +131,14 @@ Phaser.js 游戏
 - [x] 准备 3 个端到端测试用例（Flappy Bird, Space Shooter, Endless Runner）
 - [ ] 测试生成的游戏是否可运行（需要浏览器环境）
 
-#### 2. Asset Resolution 系统
-- [ ] 实现 Asset Resolver Agent
-- [ ] 资源库集成（Kenney assets）
+#### 2. ✅ Asset Resolution 系统
+- [x] 实现 Asset Resolver Agent
+- [x] 资源库集成（基础 library + placeholder 系统）
+- [x] 资源缓存系统
+- [x] 从 GameSpec 提取隐式资源
+- [x] 测试覆盖（8/8 tests passing）
 - [ ] AI 生成资源（可选）
-- [ ] 资源缓存系统
+- [ ] 集成 Kenney 资源库（需要实际资源文件）
 
 #### 3. 运行时验证
 - [ ] 实际运行生成的游戏
