@@ -21,12 +21,15 @@
     "test:integration": "ts-node src/integration-test.ts",
     "test:integration:quick": "ts-node src/integration-test.ts quick",
     "test:integration:easy": "ts-node src/integration-test.ts easy",
+    "test:e2e": "ts-node src/e2e-test.ts",
     "lint": "eslint src/**/*.ts",
     "clean": "rm -rf dist node_modules"
   },
   "dependencies": {
+    "@loom/code-generator": "workspace:*",
     "@loom/core": "workspace:*",
-    "@loom/llm-client": "workspace:*"
+    "@loom/llm-client": "workspace:*",
+    "@loom/planner": "workspace:*"
   },
   "devDependencies": {
     "@types/jest": "^29.5.0",

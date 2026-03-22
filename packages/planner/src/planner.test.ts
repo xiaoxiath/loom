@@ -156,9 +156,9 @@ describe('PlannerAgent', () => {
       const result = planner.plan(spec);
 
       expect(result.sceneGraph.scenes).toHaveLength(1);
-      expect(result.sceneGraph.scenes[0].id).toBe('main');
-      expect(result.sceneGraph.scenes[0].entities).toContain('player');
-      expect(result.sceneGraph.scenes[0].entities).toContain('enemy1');
+      expect(result.sceneGraph.scenes[0]!.id).toBe('main');
+      expect(result.sceneGraph.scenes[0]!.entities).toContain('player');
+      expect(result.sceneGraph.scenes[0]!.entities).toContain('enemy1');
     });
 
     it('should set camera to follow player', () => {
@@ -226,8 +226,8 @@ describe('PlannerAgent', () => {
       const result = planner.plan(spec);
 
       expect(result.entityGraph.nodes).toHaveLength(1);
-      expect(result.entityGraph.nodes[0].id).toBe('player');
-      expect(result.entityGraph.nodes[0].position).toEqual({ x: 100, y: 200 });
+      expect(result.entityGraph.nodes[0]!.id).toBe('player');
+      expect(result.entityGraph.nodes[0]!.position).toEqual({ x: 100, y: 200 });
     });
   });
 

@@ -72,12 +72,18 @@ importers:
 
   packages/intent-parser:
     dependencies:
+      '@loom/code-generator':
+        specifier: workspace:*
+        version: link:../code-generator
       '@loom/core':
         specifier: workspace:*
         version: link:../core
       '@loom/llm-client':
         specifier: workspace:*
         version: link:../llm-client
+      '@loom/planner':
+        specifier: workspace:*
+        version: link:../planner
     devDependencies:
       '@types/jest':
         specifier: ^29.5.0
