@@ -57,6 +57,9 @@ importers:
       '@loom/core':
         specifier: workspace:*
         version: link:../core
+      '@loom/llm-client':
+        specifier: workspace:*
+        version: link:../llm-client
       '@loom/planner':
         specifier: workspace:*
         version: link:../planner

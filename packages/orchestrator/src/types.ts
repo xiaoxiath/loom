@@ -5,6 +5,7 @@
 import type { GameSpec } from '@loom/core';
 import type { IntentParseResult } from '@loom/intent-parser';
 import type { CodeGeneratorOutput } from '@loom/code-generator';
+import type { LLMClient } from '@loom/llm-client';
 
 /**
  * Orchestrator configuration
@@ -16,6 +17,10 @@ export interface OrchestratorConfig {
   enableAssetResolution?: boolean;
   /** Enable Adapter Binding generation */
   enableAdapterBindings?: boolean;
+  /** LLM client for code generation */
+  llmClient?: LLMClient;
+  /** Whether to enable LLM-based code generation */
+  enableLLMCodeGen?: boolean;
 }
 
 /**

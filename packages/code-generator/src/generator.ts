@@ -2,6 +2,7 @@
  * Code Generator
  *
  * Generates Phaser.js game code from execution graphs
+ * Supports LLM-based generation with template fallback
  */
 
 import type {
@@ -13,6 +14,7 @@ import type {
   Entity,
 } from '@loom/core';
 import type { ResolvedAsset } from '@loom/asset-resolver';
+import type { LLMClient } from '@loom/llm-client';
 import type {
   CodeGeneratorInput,
   CodeGeneratorOutput,
@@ -20,8 +22,27 @@ import type {
   GeneratedFile,
   GeneratorDiagnostics,
 } from './types';
+import {
+  CODEGEN_SYSTEM_PROMPT,
+  CODEGEN_TEMPERATURE,
+  CODEGEN_MAX_TOKENS,
+  buildSceneGenerationPrompt,
+  CODEGEN_FEW_SHOT,
+} from './prompts';
+
+export interface CodeGeneratorConfig {
+  /** LLM client (optional: if not provided, uses template fallback) */
+  llmClient?: LLMClient;
+  /** Whether to enable few-shot examples */
+  useFewShot?: boolean;
+  /** Whether to fallback to template when LLM fails */
+  fallbackToTemplate?: boolean;
+}
 
 export class CodeGenerator {
+  private llmClient?: LLMClient;
+  private useFewShot: boolean;
+  private fallbackToTemplate: boolean;
   private diagnostics: GeneratorDiagnostics = {
     warnings: [],
     errors: [],
@@ -29,10 +50,16 @@ export class CodeGenerator {
     skippedFiles: [],
   };
 
+  constructor(config: CodeGeneratorConfig = {}) {
+    this.llmClient = config.llmClient ?? undefined;
+    this.useFewShot = config.useFewShot ?? true;
+    this.fallbackToTemplate = config.fallbackToTemplate ?? true;
+  }
+
   /**
    * Generate complete Phaser project from graphs
    */
-  generate(input: CodeGeneratorInput, _options: Partial<CodeGeneratorOptions> = {}): CodeGeneratorOutput {
+  async generate(input: CodeGeneratorInput, _options: Partial<CodeGeneratorOptions> = {}): Promise<CodeGeneratorOutput> {
     this.resetDiagnostics();
 
     const { gameSpec, sceneGraph, entityGraph, componentGraph, systemGraph, resolvedAssets } = input;
@@ -48,8 +75,11 @@ export class CodeGenerator {
     // Stage 3: Generate game config
     files.push(this.generateConfig(gameSpec, systemGraph));
 
-    // Stage 4: Generate main scene
-    files.push(this.generateMainScene(gameSpec, sceneGraph, entityGraph, componentGraph, systemGraph, resolvedAssets));
+    // Stage 4: Generate main scene (LLM or template)
+    const mainSceneFile = await this.generateMainScene(
+      gameSpec, sceneGraph, entityGraph, componentGraph, systemGraph, resolvedAssets
+    );
+    files.push(mainSceneFile);
 
     // Stage 5: Generate main entry point
     files.push(this.generateMain(gameSpec));
@@ -185,14 +215,137 @@ export const GameConfig: Phaser.Types.Core.GameConfig = {
   /**
    * Generate main scene
    */
-  private generateMainScene(
+  /**
+   * Generate main scene - dual-track strategy (LLM or template)
+   */
+  private async generateMainScene(
     gameSpec: GameSpec,
     _sceneGraph: SceneGraph,
     entityGraph: EntityGraph,
     componentGraph: ComponentGraph,
     systemGraph: SystemGraph,
     resolvedAssets?: ResolvedAsset[]
-  ): GeneratedFile {
+  ): Promise<GeneratedFile> {
+    let sceneCode: string;
+
+    // Try LLM generation first
+    if (this.llmClient) {
+      try {
+        sceneCode = await this.generateSceneViaLLM(
+          gameSpec, entityGraph, componentGraph, systemGraph, resolvedAssets
+        );
+        this.diagnostics.generationMethod = 'llm';
+      } catch (error) {
+        // LLM failed, fallback to template
+        if (this.fallbackToTemplate) {
+          console.warn(
+            `LLM generation failed, falling back to template: ${error}`
+          );
+          sceneCode = this.generateSceneViaTemplate(
+            gameSpec, entityGraph, componentGraph, systemGraph, resolvedAssets
+          );
+          this.diagnostics.generationMethod = 'template-fallback';
+          this.diagnostics.warnings.push(
+            `LLM generation failed: ${error}. Used template fallback.`
+          );
+        } else {
+          throw error;
+        }
+      }
+    } else {
+      // No LLM client, use template directly
+      sceneCode = this.generateSceneViaTemplate(
+        gameSpec, entityGraph, componentGraph, systemGraph, resolvedAssets
+      );
+      this.diagnostics.generationMethod = 'template';
+    }
+
+    this.diagnostics.generatedFiles.push('src/scenes/MainScene.ts');
+
+    return {
+      path: 'src/scenes/MainScene.ts',
+      content: sceneCode,
+      type: 'scene',
+    };
+  }
+
+  /**
+   * Generate scene via LLM
+   */
+  private async generateSceneViaLLM(
+    gameSpec: GameSpec,
+    entityGraph: EntityGraph,
+    componentGraph: ComponentGraph,
+    systemGraph: SystemGraph,
+    resolvedAssets?: ResolvedAsset[]
+  ): Promise<string> {
+    const startTime = Date.now();
+
+    // Build system prompt
+    let systemContent = CODEGEN_SYSTEM_PROMPT;
+    if (this.useFewShot) {
+      systemContent += '\n\n' + CODEGEN_FEW_SHOT;
+    }
+
+    // Build user prompt
+    const userContent = buildSceneGenerationPrompt({
+      gameSpec,
+      entityGraph,
+      componentGraph,
+      systemGraph,
+      ...(resolvedAssets && { resolvedAssets }),
+    });
+
+    // Call LLM
+    const response = await this.llmClient!.chat(
+      [
+        { role: 'system', content: systemContent },
+        { role: 'user', content: userContent },
+      ],
+      {
+        temperature: CODEGEN_TEMPERATURE,
+        maxTokens: CODEGEN_MAX_TOKENS,
+        jsonMode: { enabled: false },  // Output is code, not JSON
+      }
+    );
+
+    // Track latency and token usage
+    this.diagnostics.llmLatencyMs = Date.now() - startTime;
+    if (response.usage) {
+      this.diagnostics.llmTokenUsage = {
+        prompt: response.usage.promptTokens,
+        completion: response.usage.completionTokens,
+        total: response.usage.totalTokens,
+      };
+    }
+
+    // Clean LLM output (may contain markdown fence)
+    let code = response.content.trim();
+    code = this.stripMarkdownFences(code);
+
+    // Basic validation
+    if (!code.includes('class MainScene')) {
+      throw new Error('LLM output does not contain MainScene class');
+    }
+    if (!code.includes('extends Phaser.Scene')) {
+      throw new Error('LLM output does not extend Phaser.Scene');
+    }
+
+    return code;
+  }
+
+  /**
+   * Generate scene via template (fallback path)
+   *
+   * This is the original Sprint 1-4 implementation
+   */
+  private generateSceneViaTemplate(
+    gameSpec: GameSpec,
+    entityGraph: EntityGraph,
+    componentGraph: ComponentGraph,
+    systemGraph: SystemGraph,
+    resolvedAssets?: ResolvedAsset[]
+  ): string {
     // Build entity declarations
     const entityDeclarations = this.generateEntityDeclarations(gameSpec.entities);
 
@@ -205,7 +358,7 @@ export const GameConfig: Phaser.Types.Core.GameConfig = {
     // Build update code
     const updateCode = this.generateUpdateCode(gameSpec, componentGraph, systemGraph);
 
-    const scene = `import Phaser from 'phaser';
+    return `import Phaser from 'phaser';
 
 export class MainScene extends Phaser.Scene {
 ${entityDeclarations}
@@ -227,14 +380,19 @@ ${updateCode}
   }
 }
 `;
+  }
 
-    this.diagnostics.generatedFiles.push('src/scenes/MainScene.ts');
-
-    return {
-      path: 'src/scenes/MainScene.ts',
-      content: scene,
-      type: 'scene',
-    };
+  /**
+   * Strip markdown code fences from LLM output
+   */
+  private stripMarkdownFences(code: string): string {
+    // Remove ```typescript ... ``` wrapper
+    const fenceRegex = /^```(?:typescript|ts)?\s*\n?([\s\S]*?)\n?```$/;
+    const match = code.match(fenceRegex);
+    if (match) {
+      return match[1]!.trim();
+    }
+    return code;
   }
 
   /**
@@ -571,6 +729,6 @@ export default defineConfig({
 /**
  * Factory function to create CodeGenerator instance
  */
-export function createCodeGenerator(): CodeGenerator {
-  return new CodeGenerator();
+export function createCodeGenerator(config?: CodeGeneratorConfig): CodeGenerator {
+  return new CodeGenerator(config);
 }

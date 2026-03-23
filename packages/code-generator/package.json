@@ -25,7 +25,8 @@
   "dependencies": {
     "@loom/core": "workspace:*",
     "@loom/planner": "workspace:*",
-    "@loom/asset-resolver": "workspace:*"
+    "@loom/asset-resolver": "workspace:*",
+    "@loom/llm-client": "workspace:*"
   },
   "devDependencies": {
     "@types/jest": "^29.5.0",

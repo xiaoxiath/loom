@@ -4,7 +4,7 @@
  * Code Generator for Loom game generation platform
  */
 
-export { CodeGenerator, createCodeGenerator } from './generator';
+export { CodeGenerator, createCodeGenerator, type CodeGeneratorConfig } from './generator';
 export type {
   CodeGeneratorInput,
   CodeGeneratorOutput,

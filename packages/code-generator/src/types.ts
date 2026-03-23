@@ -54,6 +54,16 @@ export interface GeneratorDiagnostics {
   errors: string[];
   generatedFiles: string[];
   skippedFiles: string[];
+  /** Generation method used */
+  generationMethod?: 'llm' | 'template' | 'template-fallback';
+  /** LLM call latency in milliseconds */
+  llmLatencyMs?: number;
+  /** LLM token usage */
+  llmTokenUsage?: {
+    prompt: number;
+    completion: number;
+    total: number;
+  };
 }
 
 /**

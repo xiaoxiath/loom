@@ -98,7 +98,11 @@ export class Orchestrator {
 
     // ── Stage 5: Code Generation ──
     const codeStart = Date.now();
-    const codeGenerator = createCodeGenerator();
+    const codeGenerator = createCodeGenerator({
+      llmClient: this.config.enableLLMCodeGen !== false ? this.config.llmClient : undefined,
+      useFewShot: true,
+      fallbackToTemplate: true,
+    });
     const codeInput: CodeGeneratorInput = {
       gameSpec,
       sceneGraph: planResult.sceneGraph,
@@ -108,7 +112,7 @@ export class Orchestrator {
       adapterBindings,
       ...(resolvedAssets && { resolvedAssets }),
     };
-    const codeOutput = codeGenerator.generate(codeInput);
+    const codeOutput = await codeGenerator.generate(codeInput);
     const codeTime = Date.now() - codeStart;
 
     // ── Build Diagnostics ──
