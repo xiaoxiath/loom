@@ -1,33 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Orchestrator } from '@loom/orchestrator';
 import type { GameSpec } from '@loom/core';
-import { transform } from 'sucrase';
+import * as esbuild from 'esbuild';
+import { promises as fs } from 'fs';
+import path from 'path';
+import os from 'os';
 
 /**
- * Compile TypeScript code to JavaScript using Sucrase
- * @param code TypeScript code
- * @param filename File path for error messages
- * @returns Compiled JavaScript code
+ * Bundle TypeScript game code using esbuild
+ *
+ * Architecture:
+ * 1. Orchestrator generates TypeScript project (main.ts, config.ts, MainScene.ts)
+ * 2. Write files to temporary directory
+ * 3. esbuild bundles all dependencies into single bundle.js
+ * 4. Return bundle to client for browser execution
  */
-function compileTypeScript(code: string, filename: string): string {
-  try {
-    const result = transform(code, {
-      transforms: ['typescript'],
-      filePath: filename,
-      production: true,
-    });
-    return result.code;
-  } catch (error) {
-    console.error(`Failed to compile ${filename}:`, error);
-    throw new Error(
-      `TypeScript compilation failed for ${filename}: ${
-        error instanceof Error ? error.message : 'Unknown error'
-      }`
-    );
-  }
-}
-
 export async function POST(request: NextRequest) {
+  const tempDir = path.join(os.tmpdir(), `loom-game-${Date.now()}`);
+
   try {
     const body = await request.json();
     const { gameSpec } = body as { gameSpec: GameSpec };
@@ -39,58 +29,120 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create Orchestrator (MVP uses template mode)
+    // 1. Generate TypeScript code
     const orchestrator = new Orchestrator({
       enableAssetResolution: false,
       enableLLMCodeGen: false,
       enableCodeReview: false,
     });
 
-    // Generate game code (TypeScript)
     const result = await orchestrator.generate({ gameSpec });
 
-    // Compile TypeScript to JavaScript on server side
-    const compiledFiles = result.codeOutput.files.map((file) => {
-      // Only compile .ts files
-      if (file.path.endsWith('.ts')) {
-        try {
-          const compiledCode = compileTypeScript(file.content, file.path);
-          return {
-            path: file.path.replace(/\.ts$/, '.js'),
-            content: compiledCode,
-            type: file.type,
-          };
-        } catch (error) {
-          // If compilation fails, return error message in the file
-          console.error(`Compilation error in ${file.path}:`, error);
-          return {
-            ...file,
-            content: `// COMPILATION ERROR\n// ${
-              error instanceof Error ? error.message : 'Unknown error'
-            }\n\n// Original TypeScript code:\n${file.content}`,
-          };
-        }
-      }
-      return file;
+    // 2. Create temporary project directory
+    await fs.mkdir(tempDir, { recursive: true });
+    await fs.mkdir(path.join(tempDir, 'src'), { recursive: true });
+    await fs.mkdir(path.join(tempDir, 'src/scenes'), { recursive: true });
+
+    // 3. Write generated files
+    for (const file of result.codeOutput.files) {
+      const filePath = path.join(tempDir, file.path);
+      await fs.mkdir(path.dirname(filePath), { recursive: true });
+      await fs.writeFile(filePath, file.content, 'utf-8');
+    }
+
+    // 4. Create package.json for dependency resolution
+    const packageJson = {
+      name: 'loom-game',
+      version: '1.0.0',
+      type: 'module',
+      dependencies: {
+        phaser: '^3.60.0',
+      },
+    };
+    await fs.writeFile(
+      path.join(tempDir, 'package.json'),
+      JSON.stringify(packageJson, null, 2),
+      'utf-8'
+    );
+
+    // 5. Bundle with esbuild
+    const entryPoint = path.join(tempDir, 'src/main.ts');
+
+    // Check if main.ts exists, if not use config.ts
+    const mainExists = await fs
+      .access(entryPoint)
+      .then(() => true)
+      .catch(() => false);
+    const actualEntry = mainExists
+      ? entryPoint
+      : path.join(tempDir, 'src/config.ts');
+
+    const bundleResult = await esbuild.build({
+      entryPoints: [actualEntry],
+      bundle: true,
+      minify: true,
+      format: 'iife', // Immediately Invoked Function Expression for browser
+      globalName: 'GameBundle',
+      platform: 'browser',
+      target: ['es2020'],
+      outfile: 'bundle.js',
+      write: false, // Return result instead of writing to disk
+      external: [], // Bundle everything including Phaser
+      loader: {
+        '.png': 'file',
+        '.jpg': 'file',
+        '.json': 'json',
+      },
+      define: {
+        'process.env.NODE_ENV': '"production"',
+      },
     });
 
+    // 6. Extract bundle content
+    const bundleFile = bundleResult.outputFiles?.[0];
+    if (!bundleFile) {
+      throw new Error('esbuild did not produce output');
+    }
+
+    const bundleContent = bundleFile.text;
+
+    // 7. Return bundled code
     return NextResponse.json({
       success: true,
-      files: compiledFiles,
+      files: [
+        {
+          path: 'bundle.js',
+          content: bundleContent,
+          type: 'bundle',
+        },
+        ...result.codeOutput.files.map((f) => ({
+          ...f,
+          type: f.type === 'scene' ? 'scene' : 'source',
+        })),
+      ],
       diagnostics: {
         ...result.diagnostics,
-        compilationMethod: 'sucrase',
+        bundleMethod: 'esbuild',
+        bundleSize: bundleContent.length,
       },
     });
   } catch (error) {
-    console.error('Generation error:', error);
+    console.error('Bundle error:', error);
 
     return NextResponse.json(
       {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
       },
       { status: 500 }
     );
+  } finally {
+    // 8. Clean up temporary directory
+    try {
+      await fs.rm(tempDir, { recursive: true, force: true });
+    } catch (cleanupError) {
+      console.error('Cleanup error:', cleanupError);
+    }
   }
 }

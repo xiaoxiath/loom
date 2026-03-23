@@ -5,76 +5,80 @@ import { useGenerationStore } from '@/lib/stores/generationStore';
 import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
 
-interface GeneratedFile {
-  path: string;
-  content: string;
-  type: 'scene' | 'entity' | 'system' | 'config' | 'asset' | 'html' | 'package';
-}
-
+/**
+ * Game Preview Component
+ *
+ * Displays Phaser games in an iframe sandbox.
+ * Receives bundled JavaScript from API (esbuild output) and runs in browser.
+ */
 export function GamePreview() {
   const { files } = useGenerationStore();
   const [blobUrl, setBlobUrl] = useState<string>('');
   const [iframeKey, setIframeKey] = useState(0);
 
-  // Memoize file extraction to prevent unnecessary re-renders
-  const gameFiles = useMemo(() => {
-    const scene = files.find((f) => f.type === 'scene')?.content || '';
-    const config = files.find((f) => f.type === 'config')?.content || '';
-    return { scene, config };
+  // Extract bundle (type: 'bundle' from API, but typed as 'config' in store)
+  const bundleCode = useMemo(() => {
+    // Look for bundle in files (API returns type: 'bundle')
+    const bundleFile = files.find(
+      (f: any) => f.type === 'bundle' || f.path === 'bundle.js'
+    );
+    return bundleFile?.content || '';
   }, [files]);
 
   useEffect(() => {
-    if (!gameFiles.scene && !gameFiles.config) {
+    if (!bundleCode) {
       setBlobUrl('');
       return;
     }
 
-    // Build HTML with compiled JavaScript (already compiled by API)
-    const htmlContent = buildGameHTML(gameFiles);
+    // Build HTML with bundled JavaScript
+    const htmlContent = buildGameHTML(bundleCode);
     const blob = new Blob([htmlContent], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
 
     setBlobUrl(url);
 
     return () => URL.revokeObjectURL(url);
-  }, [gameFiles]);
+  }, [bundleCode]);
 
   // Pure function: build HTML template
-  function buildGameHTML(code: { scene: string; config: string }): string {
-    return `
-<!DOCTYPE html>
+  function buildGameHTML(code: string): string {
+    return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
-  <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Game Preview</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+    #game-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    canvas {
+      display: block;
+    }
+  </style>
 </head>
-<body style="margin:0; padding:0; overflow:hidden; background:#000;">
+<body>
+  <div id="game-container"></div>
   <script>
-    ${code.config}
-    ${code.scene}
-
     try {
-      const config = {
-        type: Phaser.AUTO,
-        width: 800,
-        height: 600,
-        parent: 'game',
-        physics: {
-          default: 'arcade',
-          arcade: {
-            debug: false
-          }
-        },
-        scene: MainScene
-      };
-
-      new Phaser.Game(config);
+      ${code}
     } catch (error) {
       console.error('Game initialization error:', error);
-      document.body.innerHTML = '<div style="color: white; padding: 20px; font-family: monospace; background: #1e1e1e;">Game failed to load: ' + error.message + '<br><br>Please check the console for details.</div>';
+      document.body.innerHTML = '<div style="color: white; padding: 20px; font-family: monospace; background: #1e1e1e; border-radius: 8px; max-width: 600px;"><h2 style="margin-bottom: 10px; color: #ff6b6b;">Game Failed to Load</h2><pre style="white-space: pre-wrap; word-wrap: break-word;">' + (error.stack || error.message) + '</pre><p style="margin-top: 15px; color: #aaa;">Please check the browser console for details.</p></div>';
     }
   </script>
-  <div id="game" style="display: flex; justify-content: center; align-items: center; min-height: 100vh;"></div>
 </body>
 </html>`;
   }
@@ -107,15 +111,13 @@ export function GamePreview() {
       </div>
 
       <div className="flex-1 overflow-hidden">
-        {blobUrl && (
-          <iframe
-            key={iframeKey}
-            src={blobUrl}
-            sandbox="allow-scripts"
-            className="w-full h-full border-0"
-            title="Game Preview"
-          />
-        )}
+        <iframe
+          key={iframeKey}
+          src={blobUrl}
+          sandbox="allow-scripts"
+          className="w-full h-full border-0"
+          title="Game Preview"
+        />
       </div>
     </div>
   );

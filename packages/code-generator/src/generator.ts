@@ -184,7 +184,10 @@ export class CodeGenerator {
     const height = gameSpec.settings.worldHeight || 600;
     const bgColor = gameSpec.settings.backgroundColor || '#000000';
 
-    const config = `const GameConfig = {
+    const config = `import Phaser from 'phaser';
+import { MainScene } from './scenes/MainScene';
+
+export const GameConfig: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
   parent: 'game-container',
   width: ${width},
@@ -359,7 +362,9 @@ export class CodeGenerator {
     // Build collision handlers
     const collisionHandlers = this.generateCollisionHandlers(gameSpec, entityGraph);
 
-    return `class MainScene extends Phaser.Scene {
+    return `import Phaser from 'phaser';
+
+export class MainScene extends Phaser.Scene {
 ${entityDeclarations}
 
   constructor() {
@@ -378,6 +383,7 @@ ${createCode}
 ${updateCode}
   }
 ${collisionHandlers}
+}
 `;
   }
 

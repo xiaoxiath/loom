@@ -12,9 +12,9 @@ Scoring: collect type, increment 10
 
 ### Output
 \`\`\`typescript
-// NO import statements - Phaser is a global variable (loaded via CDN)
+import Phaser from 'phaser';
 
-class MainScene extends Phaser.Scene {  // Note: NO 'export' keyword
+export class MainScene extends Phaser.Scene {
   private player!: Phaser.Physics.Arcade.Sprite;
   private obstacleGroup!: Phaser.Physics.Arcade.StaticGroup;
   private pickupGroup!: Phaser.Physics.Arcade.Group;
