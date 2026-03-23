@@ -23,6 +23,12 @@ import type {
   PlanDiagnostics,
   CameraConfig,
 } from '@loom/core';
+import type { LLMClient } from '@loom/llm-client';
+
+export interface PlannerConfig {
+  /** LLM client for enhanced planning */
+  llmClient?: LLMClient;
+}
 
 /**
  * Planner Agent
@@ -30,9 +36,13 @@ import type {
  * Transforms declarative GameSpec into executable graph structures.
  */
 export class PlannerAgent {
+  private llmClient?: LLMClient;
   private diagnostics: PlanDiagnostics;
 
-  constructor() {
+  constructor(config: PlannerConfig = {}) {
+    if (config.llmClient !== undefined) {
+      this.llmClient = config.llmClient;
+    }
     this.diagnostics = {
       warnings: [],
       autoFixes: [],
@@ -41,12 +51,12 @@ export class PlannerAgent {
   }
 
   /**
-   * Main planning method
+   * Main planning method (supports LLM enhancement)
    *
    * @param gameSpec - Input game specification
    * @returns PlanResult with all graphs and diagnostics
    */
-  plan(gameSpec: GameSpec): PlanResult {
+  async plan(gameSpec: GameSpec): Promise<PlanResult> {
     // Reset diagnostics
     this.diagnostics = {
       warnings: [],
@@ -54,11 +64,24 @@ export class PlannerAgent {
       inferredNodes: [],
     };
 
+    // Stage 0 (NEW): LLM preprocessing — enrich spec with inferred components
+    let enrichedSpec = gameSpec;
+    if (this.llmClient) {
+      try {
+        enrichedSpec = await this.enrichSpecWithLLM(gameSpec);
+      } catch (error) {
+        // LLM failure doesn't block, fallback to pure rules
+        this.diagnostics.warnings.push(
+          `LLM enrichment failed: ${error}. Using rule-based planning only.`
+        );
+      }
+    }
+
     // Stage 1: Validate
-    this.validateSpec(gameSpec);
+    this.validateSpec(enrichedSpec);
 
     // Stage 2: Complete structure
-    const completedSpec = this.completeStructure(gameSpec);
+    const completedSpec = this.completeStructure(enrichedSpec);
 
     // Stage 3: Build graphs
     const sceneGraph = this.buildSceneGraph(completedSpec);
@@ -515,11 +538,111 @@ export class PlannerAgent {
       return aDeps.length - bDeps.length;
     });
   }
+
+  /**
+   * LLM preprocessing: Enrich GameSpec with inferred components and systems
+   *
+   * Design principles:
+   * 1. LLM only "completes", doesn't modify existing config
+   * 2. Output is incremental diff, not complete spec
+   * 3. Rule engine still does final validation
+   */
+  private async enrichSpecWithLLM(spec: GameSpec): Promise<GameSpec> {
+    const prompt = `Analyze this GameSpec and suggest missing components/systems.
+
+## GameSpec
+${JSON.stringify(spec, null, 2)}
+
+## Task
+Based on the game genre "${spec.meta.genre}" and mechanics [${spec.mechanics.join(', ')}]:
+1. What components should each entity have that are currently missing?
+2. What systems should be active that are currently missing?
+3. Are there any implicit mechanics not listed?
+
+Respond in JSON:
+{
+  "entityComponentAdditions": {
+    "<entityId>": ["component1", "component2"]
+  },
+  "systemAdditions": ["system1", "system2"],
+  "mechanicAdditions": ["mechanic1"],
+  "reasoning": "brief explanation"
+}
+
+Only suggest additions. Do NOT remove existing components/systems.`;
+
+    const response = await this.llmClient!.chat(
+      [
+        {
+          role: 'system',
+          content:
+            'You are a game design expert. Analyze game specifications '
+            + 'and identify missing components for complete gameplay.',
+        },
+        { role: 'user', content: prompt },
+      ],
+      {
+        temperature: 0.3,
+        maxTokens: 2000,
+        jsonMode: { enabled: true },
+      }
+    );
+
+    const suggestions = JSON.parse(response.content);
+
+    // Apply incremental completion
+    const enriched = structuredClone(spec);
+
+    // Add entity components
+    if (suggestions.entityComponentAdditions) {
+      for (const [entityId, components] of Object.entries(
+        suggestions.entityComponentAdditions as Record<string, string[]>
+      )) {
+        const entity = enriched.entities.find(e => e.id === entityId);
+        if (entity) {
+          for (const comp of components) {
+            if (!entity.components.includes(comp)) {
+              entity.components.push(comp);
+              this.diagnostics.inferredNodes.push(
+                `LLM added component '${comp}' to entity '${entityId}'`
+              );
+            }
+          }
+        }
+      }
+    }
+
+    // Add systems
+    if (suggestions.systemAdditions) {
+      for (const sys of suggestions.systemAdditions as string[]) {
+        if (!enriched.systems.includes(sys as any)) {
+          enriched.systems.push(sys as any);
+          this.diagnostics.inferredNodes.push(
+            `LLM added system '${sys}'`
+          );
+        }
+      }
+    }
+
+    // Add mechanics
+    if (suggestions.mechanicAdditions) {
+      for (const mech of suggestions.mechanicAdditions as string[]) {
+        if (!enriched.mechanics.includes(mech as any)) {
+          enriched.mechanics.push(mech as any);
+          this.diagnostics.inferredNodes.push(
+            `LLM added mechanic '${mech}'`
+          );
+        }
+      }
+    }
+
+    return enriched;
+  }
 }
 
 /**
  * Factory function to create PlannerAgent instance
  */
-export function createPlanner(): PlannerAgent {
-  return new PlannerAgent();
+export function createPlanner(config?: PlannerConfig): PlannerAgent {
+  return new PlannerAgent(config);
 }

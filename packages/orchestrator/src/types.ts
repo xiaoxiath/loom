@@ -6,6 +6,7 @@ import type { GameSpec } from '@loom/core';
 import type { IntentParseResult } from '@loom/intent-parser';
 import type { CodeGeneratorOutput } from '@loom/code-generator';
 import type { LLMClient } from '@loom/llm-client';
+import type { ReviewResult } from '@loom/code-review';
 
 /**
  * Orchestrator configuration
@@ -21,6 +22,8 @@ export interface OrchestratorConfig {
   llmClient?: LLMClient;
   /** Whether to enable LLM-based code generation */
   enableLLMCodeGen?: boolean;
+  /** Whether to enable code review */
+  enableCodeReview?: boolean;
 }
 
 /**
@@ -57,8 +60,12 @@ export interface PipelineDiagnostics {
   assetResolutionTimeMs: number;
   /** Code generation time in milliseconds */
   codeGenerationTimeMs: number;
+  /** Code review time in milliseconds */
+  codeReviewTimeMs?: number;
   /** Total pipeline time in milliseconds */
   totalTimeMs: number;
+  /** Code review result (if enabled) */
+  codeReview?: ReviewResult;
 }
 
 // Re-export for convenience

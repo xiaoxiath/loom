@@ -86,6 +86,28 @@ importers:
         specifier: ^5.3.0
         version: 5.9.3
 
+  packages/code-review:
+    dependencies:
+      '@loom/code-generator':
+        specifier: workspace:*
+        version: link:../code-generator
+      '@loom/core':
+        specifier: workspace:*
+        version: link:../core
+      '@loom/llm-client':
+        specifier: workspace:*
+        version: link:../llm-client
+    devDependencies:
+      '@types/node':
+        specifier: ^20.10.0
+        version: 20.19.37
+      tsup:
+        specifier: ^8.0.0
+        version: 8.5.1(tsx@4.21.0)(typescript@5.9.3)
+      typescript:
+        specifier: ^5.3.0
+        version: 5.9.3
+
   packages/core:
     devDependencies:
       '@types/jest':
@@ -192,6 +214,9 @@ importers:
       '@loom/code-generator':
         specifier: workspace:*
         version: link:../code-generator
+      '@loom/code-review':
+        specifier: workspace:*
+        version: link:../code-review
       '@loom/core':
         specifier: workspace:*
         version: link:../core
@@ -232,6 +257,9 @@ importers:
       '@loom/core':
         specifier: workspace:*
         version: link:../core
+      '@loom/llm-client':
+        specifier: workspace:*
+        version: link:../llm-client
     devDependencies:
       '@types/jest':
         specifier: ^29.5.0

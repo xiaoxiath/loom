@@ -8,8 +8,8 @@
 
 import type { GameSpec, AdapterBinding } from '@loom/core';
 import type { IntentParserAgent, IntentParseResult } from '@loom/intent-parser';
-import { createPlanner } from '@loom/planner';
-import { createCodeGenerator } from '@loom/code-generator';
+import { createPlanner, type PlannerConfig } from '@loom/planner';
+import { createCodeGenerator, type CodeGeneratorConfig } from '@loom/code-generator';
 import type { CodeGeneratorInput } from '@loom/code-generator';
 import { AssetResolver } from '@loom/asset-resolver';
 import type { ResolvedAsset } from '@loom/asset-resolver';
@@ -17,6 +17,7 @@ import {
   createDefaultRegistry,
   generateAdapterBindings,
 } from '@loom/runtime-adapter';
+import { CodeReviewAgent } from '@loom/code-review';
 
 import type {
   OrchestratorConfig,
@@ -71,8 +72,12 @@ export class Orchestrator {
 
     // ── Stage 2: Planning ──
     const planStart = Date.now();
-    const planner = createPlanner();
-    const planResult = planner.plan(gameSpec);
+    const plannerConfig: PlannerConfig = {};
+    if (this.config.llmClient) {
+      plannerConfig.llmClient = this.config.llmClient;
+    }
+    const planner = createPlanner(plannerConfig);
+    const planResult = await planner.plan(gameSpec);
     const planTime = Date.now() - planStart;
 
     // ── Stage 3: Asset Resolution (optional) ──
@@ -98,11 +103,14 @@ export class Orchestrator {
 
     // ── Stage 5: Code Generation ──
     const codeStart = Date.now();
-    const codeGenerator = createCodeGenerator({
-      llmClient: this.config.enableLLMCodeGen !== false ? this.config.llmClient : undefined,
+    const codeGeneratorConfig: CodeGeneratorConfig = {
       useFewShot: true,
       fallbackToTemplate: true,
-    });
+    };
+    if (this.config.enableLLMCodeGen !== false && this.config.llmClient) {
+      codeGeneratorConfig.llmClient = this.config.llmClient;
+    }
+    const codeGenerator = createCodeGenerator(codeGeneratorConfig);
     const codeInput: CodeGeneratorInput = {
       gameSpec,
       sceneGraph: planResult.sceneGraph,
@@ -114,6 +122,37 @@ export class Orchestrator {
     };
     const codeOutput = await codeGenerator.generate(codeInput);
     const codeTime = Date.now() - codeStart;
+
+    // ── Stage 6: Code Review (NEW) ──
+    let finalCodeOutput = codeOutput;
+    let reviewResult;
+
+    if (this.config.llmClient && this.config.enableCodeReview !== false) {
+      const reviewer = new CodeReviewAgent(this.config.llmClient, {
+        autoFix: true,
+        maxFixRounds: 2,
+      });
+
+      const sceneFile = codeOutput.files.find(
+        f => f.path.includes('MainScene')
+      );
+
+      if (sceneFile) {
+        reviewResult = await reviewer.review(sceneFile, gameSpec);
+
+        // If there's fixed code, replace the original file
+        if (reviewResult.fixedCode) {
+          finalCodeOutput = {
+            ...codeOutput,
+            files: codeOutput.files.map(f =>
+              f.path === sceneFile.path
+                ? { ...f, content: reviewResult!.fixedCode! }
+                : f
+            ),
+          };
+        }
+      }
+    }
 
     // ── Build Diagnostics ──
     const diagnostics: PipelineDiagnostics = {
@@ -128,9 +167,14 @@ export class Orchestrator {
       diagnostics.intentParsing = intentResult;
     }
 
+    // Add code review result if available
+    if (reviewResult) {
+      diagnostics.codeReview = reviewResult;
+    }
+
     return {
       gameSpec,
-      codeOutput,
+      codeOutput: finalCodeOutput,
       diagnostics,
     };
   }

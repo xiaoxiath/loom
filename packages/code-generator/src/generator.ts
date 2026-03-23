@@ -51,7 +51,9 @@ export class CodeGenerator {
   };
 
   constructor(config: CodeGeneratorConfig = {}) {
-    this.llmClient = config.llmClient ?? undefined;
+    if (config.llmClient !== undefined) {
+      this.llmClient = config.llmClient;
+    }
     this.useFewShot = config.useFewShot ?? true;
     this.fallbackToTemplate = config.fallbackToTemplate ?? true;
   }

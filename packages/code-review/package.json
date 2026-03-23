@@ -1,7 +1,7 @@
 {
-  "name": "@loom/orchestrator",
+  "name": "@loom/code-review",
   "version": "0.1.0",
-  "description": "Runtime Orchestrator for Loom game generation platform",
+  "description": "Code Review Agent for Loom game generation platform",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -16,27 +16,16 @@
     "build": "tsup src/index.ts --format cjs,esm --dts --clean",
     "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
     "typecheck": "tsc --noEmit",
-    "test": "jest",
-    "test:watch": "jest --watch",
+    "lint": "eslint src/**/*.ts",
     "clean": "rm -rf dist node_modules"
   },
   "dependencies": {
     "@loom/core": "workspace:*",
-    "@loom/planner": "workspace:*",
     "@loom/code-generator": "workspace:*",
-    "@loom/asset-resolver": "workspace:*",
-    "@loom/runtime-adapter": "workspace:*",
-    "@loom/code-review": "workspace:*"
-  },
-  "peerDependencies": {
-    "@loom/intent-parser": "workspace:*",
     "@loom/llm-client": "workspace:*"
   },
   "devDependencies": {
-    "@types/jest": "^29.5.0",
     "@types/node": "^20.10.0",
-    "jest": "^29.7.0",
-    "ts-jest": "^29.1.0",
     "tsup": "^8.0.0",
     "typescript": "^5.3.0"
   },
@@ -47,7 +36,7 @@
     "loom",
     "game",
     "ai",
-    "orchestrator",
-    "pipeline"
+    "code-review",
+    "phaser"
   ]
 }
