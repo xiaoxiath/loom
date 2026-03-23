@@ -45,16 +45,18 @@ export function GamePreview() {
         .replace(/export\s+(default\s+)?/g, '')
         // 移除 import 语句
         .replace(/import\s+.*?from\s+['"].*?['"];?\n?/g, '')
-        // 移除私有字段声明中的类型注解 (private player!: Phaser.Physics.Arcade.Sprite;)
-        .replace(/private\s+(\w+)!:\s*[^;]+;/g, 'private $1;')
-        // 移除其他字段的类型注解 (player: Phaser.Physics.Arcade.Sprite)
-        .replace(/^(\s+)(?:private\s+)?(?:public\s+)?(\w+)(?:\?)?:\s*[A-Za-z.<>[\]|]+\s*([=;])/gm, '$1$2$3')
+        // 完全移除私有字段声明（TypeScript 类字段声明在 JS 中不需要）
+        .replace(/^\s*(?:private|public)\s+\w+!:\s*[^;]+;\s*$/gm, '')
+        // 移除带初始值的私有/公共字段声明，保留初始值
+        .replace(/^\s*(?:private|public)\s+(\w+)\s*(?::\s*[^;=]+)?\s*=\s*/gm, '  $1 = ')
         // 移除函数参数的类型注解
         .replace(/\((\w+):\s*[^,)]+\)/g, '($1)')
         // 移除返回类型注解
         .replace(/\):\s*[A-Za-z.<>[\]|]+\s*{/g, '): {')
         // 移除泛型参数
-        .replace(/<[^>]+>/g, '');
+        .replace(/<[^>]+>/g, '')
+        // 清理多余的空行
+        .replace(/\n\s*\n\s*\n/g, '\n\n');
     };
 
     const sceneCode = processCode(sceneFile?.content || '');
