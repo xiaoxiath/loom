@@ -4,39 +4,18 @@
  * Generates adapter bindings from ComponentGraph
  */
 
-import type { ComponentGraph, AdapterBinding } from '@loom/core';
-import {
-  AdapterRegistryImpl,
-  jumpAdapter,
-  healthAdapter,
-  keyboardInputAdapter,
-  gravityAdapter
-} from '@loom/runtime-adapter';
-
-/**
- * Create a registry with all available adapters
- */
-export function createPhaserAdapterRegistry(): AdapterRegistryImpl {
-  const registry = new AdapterRegistryImpl();
-
-  // Register all available Phaser adapters
-  // Use type assertion to work with generic RuntimeAdapter type
-  registry.register('jump', 'phaser', jumpAdapter as any);
-  registry.register('health', 'phaser', healthAdapter as any);
-  registry.register('keyboardInput', 'phaser', keyboardInputAdapter as any);
-  registry.register('gravity', 'phaser', gravityAdapter as any);
-
-  return registry;
-}
+import type { ComponentGraph, GameSpec, AdapterBinding, SupportedEngine } from '@loom/core';
+import { AdapterRegistryImpl } from './registry';
 
 /**
  * Generate adapter bindings from component graph
  */
 export function generateAdapterBindings(
   componentGraph: ComponentGraph,
-  engine: 'phaser' = 'phaser'
+  _gameSpec: GameSpec,
+  registry: AdapterRegistryImpl,
+  engine: SupportedEngine = 'phaser'
 ): AdapterBinding[] {
-  const registry = createPhaserAdapterRegistry();
   const bindings: AdapterBinding[] = [];
 
   // For each entity's components

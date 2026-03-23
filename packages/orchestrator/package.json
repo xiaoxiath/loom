@@ -1,7 +1,7 @@
 {
-  "name": "@loom/intent-parser",
+  "name": "@loom/orchestrator",
   "version": "0.1.0",
-  "description": "Intent Parser for Loom game generation platform",
+  "description": "Runtime Orchestrator for Loom game generation platform",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -18,24 +18,24 @@
     "typecheck": "tsc --noEmit",
     "test": "jest",
     "test:watch": "jest --watch",
-    "lint": "eslint src/**/*.ts",
     "clean": "rm -rf dist node_modules"
   },
   "dependencies": {
-    "@loom/code-generator": "workspace:*",
     "@loom/core": "workspace:*",
-    "@loom/llm-client": "workspace:*",
     "@loom/planner": "workspace:*",
-    "@loom/runtime-adapter": "workspace:*",
-    "ajv": "^8.18.0",
-    "ajv-formats": "^3.0.1"
+    "@loom/code-generator": "workspace:*",
+    "@loom/asset-resolver": "workspace:*",
+    "@loom/runtime-adapter": "workspace:*"
+  },
+  "peerDependencies": {
+    "@loom/intent-parser": "workspace:*",
+    "@loom/llm-client": "workspace:*"
   },
   "devDependencies": {
     "@types/jest": "^29.5.0",
     "@types/node": "^20.10.0",
     "jest": "^29.7.0",
     "ts-jest": "^29.1.0",
-    "ts-node": "^10.9.0",
     "tsup": "^8.0.0",
     "typescript": "^5.3.0"
   },
@@ -46,8 +46,7 @@
     "loom",
     "game",
     "ai",
-    "intent-parser",
-    "llm",
-    "natural-language"
+    "orchestrator",
+    "pipeline"
   ]
 }

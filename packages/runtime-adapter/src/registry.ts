@@ -5,6 +5,14 @@
  */
 
 import type { RuntimeAdapter, AdapterRegistry as IAdapterRegistry } from '@loom/core';
+import {
+  jumpAdapter,
+  gravityAdapter,
+  collisionAdapter,
+  keyboardInputAdapter,
+  healthAdapter,
+  destroyOnCollisionAdapter,
+} from './adapters';
 
 export class AdapterRegistryImpl implements IAdapterRegistry {
   private adapters: Map<string, RuntimeAdapter> = new Map();
@@ -113,9 +121,20 @@ export class AdapterRegistryImpl implements IAdapterRegistry {
 export function createDefaultRegistry(): AdapterRegistryImpl {
   const registry = new AdapterRegistryImpl();
 
-  // Import and register all core adapters
-  // This would be done dynamically in a real implementation
-  // For now, users should import and register adapters manually
+  // Register all core Phaser adapters
+  // Use double assertion to work with generic RuntimeAdapter type
+  const coreAdapters = [
+    jumpAdapter,
+    gravityAdapter,
+    collisionAdapter,
+    keyboardInputAdapter,
+    healthAdapter,
+    destroyOnCollisionAdapter,
+  ] as unknown as RuntimeAdapter[];
+
+  for (const adapter of coreAdapters) {
+    registry.register(adapter.componentType, adapter.engine, adapter);
+  }
 
   return registry;
 }

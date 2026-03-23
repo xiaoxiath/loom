@@ -19,6 +19,9 @@ import {
 } from './prompts/examples';
 import { normalizePrompt, type NormalizedPrompt } from './normalizer';
 import { repairSpec, type RepairRule } from './repair-engine';
+import Ajv from 'ajv';
+import addFormats from 'ajv-formats';
+import gamespecSchema from '../../../schemas/gamespec.schema.json';
 
 /**
  * Intent Parser Agent
@@ -29,14 +32,17 @@ export class IntentParserAgent {
   private llmClient: LLMClient;
   private useExamples: boolean;
   private customRepairRules: RepairRule[];
+  private schemaValidator: ReturnType<Ajv['compile']>;
 
   constructor(config: IntentParserConfig) {
     this.llmClient = config.llmClient;
     this.useExamples = config.useExamples ?? true;
     this.customRepairRules = [];
-    // Store config options for future use
-    // maxRetries: config.maxRetries ?? 3;
-    // validateOutput: config.validateOutput ?? true;
+
+    // Initialize JSON Schema validator
+    const ajv = new Ajv({ allErrors: true });
+    addFormats(ajv);
+    this.schemaValidator = ajv.compile(gamespecSchema);
   }
 
   /**
@@ -168,30 +174,25 @@ export class IntentParserAgent {
     const errors: string[] = [];
     const warnings: string[] = [];
 
-    // Check required fields
-    if (!spec.meta) errors.push('Missing required field: meta');
-    if (!spec.settings) errors.push('Missing required field: settings');
-    if (!spec.scene) errors.push('Missing required field: scene');
-    if (!spec.entities) errors.push('Missing required field: entities');
-    if (!spec.systems) errors.push('Missing required field: systems');
-    if (!spec.mechanics) errors.push('Missing required field: mechanics');
+    // Use JSON Schema for structural validation
+    const valid = this.schemaValidator(spec);
+    if (!valid && this.schemaValidator.errors) {
+      for (const err of this.schemaValidator.errors) {
+        const path = err.instancePath || '(root)';
+        errors.push(`${path}: ${err.message}`);
+      }
+    }
 
-    // Check for player entity
+    // Add semantic-level validation (business logic beyond Schema)
     if (spec.entities && Array.isArray(spec.entities)) {
       const hasPlayer = spec.entities.some((e: any) => e.type === 'player');
       if (!hasPlayer) errors.push('No player entity found');
-    }
 
-    // Check component dependencies
-    if (spec.entities && Array.isArray(spec.entities)) {
       for (const entity of spec.entities) {
-        if (entity.components && entity.components.includes('jump')) {
-          if (!spec.settings?.gravity) {
-            warnings.push('Jump component requires gravity in settings');
-          }
-          if (!spec.mechanics?.includes('gravity')) {
-            warnings.push('Jump component requires gravity in mechanics');
-          }
+        if (entity.components?.includes('jump') && !spec.settings?.gravity) {
+          warnings.push(
+            `Entity "${entity.id}": jump component requires gravity in settings`
+          );
         }
       }
     }

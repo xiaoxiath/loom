@@ -207,7 +207,7 @@ export function repairSpec(
     if (rule.match(repairedSpec)) {
       // Clone only when first repair is needed (lazy cloning)
       if (!hasCloned) {
-        repairedSpec = JSON.parse(JSON.stringify(spec));
+        repairedSpec = structuredClone(spec);
         hasCloned = true;
       }
 

@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -E '\\\\.\\(js|ts\\)$')",
+      "Bash(pnpm test:*)",
+      "Bash(pnpm build:*)",
+      "Bash(pnpm tsx:*)",
+      "Bash(pnpm add:*)",
+      "Bash(pnpm:*)",
+      "Bash(find . -name *flappy-bird.json -o -name examples -type d)",
+      "Bash(git mv:*)",
+      "Bash(ls:*)",
+      "Bash(git rm:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
+    ]
+  }
+}

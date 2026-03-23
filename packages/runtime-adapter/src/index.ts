@@ -7,6 +7,9 @@
 // Core registry
 export { AdapterRegistryImpl, createDefaultRegistry } from './registry';
 
+// Adapter bindings generator
+export { generateAdapterBindings } from './adapter-bindings';
+
 // All Phaser adapters
 export * from './adapters';
 

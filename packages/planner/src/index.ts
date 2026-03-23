@@ -4,4 +4,4 @@
  * Planner Agent for Loom game generation platform
  */
 
-export { PlannerAgent, planner } from './planner';
+export { PlannerAgent, createPlanner } from './planner';

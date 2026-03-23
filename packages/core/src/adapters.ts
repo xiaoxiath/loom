@@ -76,16 +76,6 @@ export interface AdapterBinding {
 }
 
 /**
- * Engine-specific types
- * These are generic engine abstractions - concrete implementations in adapter packages
- */
-export interface GenericEngine {
-  // Generic engine interface
-  // Concrete implementations (Phaser, Godot, Unity) defined in adapter packages
-  [key: string]: unknown;
-}
-
-/**
  * Supported engines
  */
 export type SupportedEngine = 'phaser' | 'godot' | 'unity' | 'threejs';

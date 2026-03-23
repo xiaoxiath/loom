@@ -76,7 +76,6 @@ export type {
   RuntimeAdapter,
   AdapterRegistry,
   AdapterBinding,
-  GenericEngine,
   SupportedEngine,
   AdapterDebugInfo,
 } from './adapters';

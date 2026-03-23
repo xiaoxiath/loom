@@ -12,6 +12,7 @@ import type {
   GameSpec,
   AdapterBinding,
 } from '@loom/core';
+import type { ResolvedAsset } from '@loom/asset-resolver';
 
 /**
  * Code Generator input
@@ -23,6 +24,7 @@ export interface CodeGeneratorInput {
   systemGraph: SystemGraph;
   adapterBindings: AdapterBinding[];
   gameSpec: GameSpec;
+  resolvedAssets?: ResolvedAsset[];
 }
 
 /**

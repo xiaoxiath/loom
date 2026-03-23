@@ -108,7 +108,7 @@ export class PlannerAgent {
    * Stage 2: Complete missing structure
    */
   private completeStructure(spec: GameSpec): GameSpec {
-    const completed = JSON.parse(JSON.stringify(spec)) as GameSpec;
+    const completed = structuredClone(spec) as GameSpec;
 
     // Auto-complete player position
     const player = completed.entities.find((e) => e.type === 'player');
@@ -263,20 +263,42 @@ export class PlannerAgent {
     for (const entity of spec.entities) {
       // Spawn relationships
       if (entity.components.includes('spawn')) {
-        // Find what this entity spawns
-        const spawnTargets = spec.entities.filter(
-          (e) =>
-            e.id.includes(entity.id) &&
-            e.id !== entity.id &&
-            (e.type === 'projectile' || e.type === 'enemy' || e.type === 'pickup')
-        );
+        const spawnableTypes = new Set(['projectile', 'enemy', 'pickup']);
 
-        for (const target of spawnTargets) {
-          edges.push({
-            from: entity.id,
-            to: target.id,
-            type: 'spawns',
-          });
+        // Strategy 1: shoot component entities → spawn all projectiles
+        if (entity.components.includes('shoot')) {
+          const projectiles = spec.entities.filter(
+            e => e.type === 'projectile' && e.id !== entity.id
+          );
+          for (const target of projectiles) {
+            edges.push({ from: entity.id, to: target.id, type: 'spawns' });
+          }
+        }
+
+        // Strategy 2: spawner type entities → spawn all spawnableTypes
+        if (entity.type === 'spawner') {
+          const targets = spec.entities.filter(
+            e => spawnableTypes.has(e.type) && e.id !== entity.id
+          );
+          for (const target of targets) {
+            edges.push({ from: entity.id, to: target.id, type: 'spawns' });
+          }
+        }
+
+        // Strategy 3: Fallback — prefix matching (includes → startsWith)
+        const prefixTargets = spec.entities.filter(
+          (e) =>
+            e.id.startsWith(entity.id + '_') &&
+            spawnableTypes.has(e.type)
+        );
+        for (const target of prefixTargets) {
+          // Avoid duplicate edges
+          const exists = edges.some(
+            e => e.from === entity.id && e.to === target.id && e.type === 'spawns'
+          );
+          if (!exists) {
+            edges.push({ from: entity.id, to: target.id, type: 'spawns' });
+          }
         }
       }
 
@@ -345,8 +367,8 @@ export class PlannerAgent {
       jump: ['gravity'],
       shoot: ['keyboardInput'],
       collect: ['collision'],
-      patrol: ['move'],
-      followTarget: ['move'],
+      patrol: ['run'],
+      followTarget: ['run'],
     };
 
     // Add dependencies
@@ -495,5 +517,9 @@ export class PlannerAgent {
   }
 }
 
-// Export singleton instance
-export const planner = new PlannerAgent();
+/**
+ * Factory function to create PlannerAgent instance
+ */
+export function createPlanner(): PlannerAgent {
+  return new PlannerAgent();
+}

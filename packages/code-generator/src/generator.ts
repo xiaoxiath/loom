@@ -12,6 +12,7 @@ import type {
   GameSpec,
   Entity,
 } from '@loom/core';
+import type { ResolvedAsset } from '@loom/asset-resolver';
 import type {
   CodeGeneratorInput,
   CodeGeneratorOutput,
@@ -34,7 +35,7 @@ export class CodeGenerator {
   generate(input: CodeGeneratorInput, _options: Partial<CodeGeneratorOptions> = {}): CodeGeneratorOutput {
     this.resetDiagnostics();
 
-    const { gameSpec, sceneGraph, entityGraph, componentGraph, systemGraph } = input;
+    const { gameSpec, sceneGraph, entityGraph, componentGraph, systemGraph, resolvedAssets } = input;
 
     const files: GeneratedFile[] = [];
 
@@ -48,7 +49,7 @@ export class CodeGenerator {
     files.push(this.generateConfig(gameSpec, systemGraph));
 
     // Stage 4: Generate main scene
-    files.push(this.generateMainScene(gameSpec, sceneGraph, entityGraph, componentGraph));
+    files.push(this.generateMainScene(gameSpec, sceneGraph, entityGraph, componentGraph, systemGraph, resolvedAssets));
 
     // Stage 5: Generate main entry point
     files.push(this.generateMain(gameSpec));
@@ -188,19 +189,21 @@ export const GameConfig: Phaser.Types.Core.GameConfig = {
     gameSpec: GameSpec,
     _sceneGraph: SceneGraph,
     entityGraph: EntityGraph,
-    componentGraph: ComponentGraph
+    componentGraph: ComponentGraph,
+    systemGraph: SystemGraph,
+    resolvedAssets?: ResolvedAsset[]
   ): GeneratedFile {
     // Build entity declarations
     const entityDeclarations = this.generateEntityDeclarations(gameSpec.entities);
 
     // Build preload code
-    const preloadCode = this.generatePreloadCode(gameSpec);
+    const preloadCode = this.generatePreloadCode(gameSpec, resolvedAssets);
 
     // Build create code
     const createCode = this.generateCreateCode(gameSpec, entityGraph, componentGraph);
 
     // Build update code
-    const updateCode = this.generateUpdateCode(gameSpec, componentGraph);
+    const updateCode = this.generateUpdateCode(gameSpec, componentGraph, systemGraph);
 
     const scene = `import Phaser from 'phaser';
 
@@ -239,12 +242,24 @@ ${updateCode}
    */
   private generateEntityDeclarations(entities: Entity[]): string {
     const declarations: string[] = [];
+    const groupTypes = new Set<string>();
 
     for (const entity of entities) {
       const varName = this.getEntityVarName(entity.id);
-      const type = entity.type === 'player' ? 'Phaser.Physics.Arcade.Sprite' : 'Phaser.Physics.Arcade.Sprite';
+      // FIX-02: Remove meaningless ternary, unified type
+      declarations.push(`  private ${varName}!: Phaser.Physics.Arcade.Sprite;`);
 
-      declarations.push(`  private ${varName}!: ${type};`);
+      // Collect entity types that need Groups (non-player)
+      if (['enemy', 'obstacle', 'pickup', 'projectile'].includes(entity.type)) {
+        groupTypes.add(entity.type);
+      }
+    }
+
+    // Declare Phaser Groups for each type
+    for (const groupType of groupTypes) {
+      declarations.push(
+        `  private ${groupType}Group!: Phaser.Physics.Arcade.Group;`
+      );
     }
 
     return declarations.join('\n');
@@ -253,14 +268,27 @@ ${updateCode}
   /**
    * Generate preload code
    */
-  private generatePreloadCode(gameSpec: GameSpec): string {
+  private generatePreloadCode(
+    gameSpec: GameSpec,
+    resolvedAssets?: ResolvedAsset[]
+  ): string {
     const lines: string[] = [];
+
+    // Build asset ID → resolved URL mapping
+    const assetMap = new Map<string, string>();
+    if (resolvedAssets) {
+      for (const asset of resolvedAssets) {
+        assetMap.set(asset.id, asset.resolvedUrl);
+      }
+    }
 
     // Load sprites
     for (const entity of gameSpec.entities) {
       if (entity.sprite) {
         const spriteKey = entity.sprite;
-        const spritePath = `assets/sprites/${spriteKey}.png`;
+        // Use Asset Resolver's result first, fallback to default path
+        const spritePath = assetMap.get(spriteKey)
+          ?? `assets/sprites/${spriteKey}.png`;
         lines.push(`    this.load.image('${spriteKey}', '${spritePath}');`);
       }
     }
@@ -277,51 +305,83 @@ ${updateCode}
    */
   private generateCreateCode(
     gameSpec: GameSpec,
-    _entityGraph: EntityGraph,
+    entityGraph: EntityGraph,
     _componentGraph: ComponentGraph
   ): string {
     const lines: string[] = [];
-    lines.push('    // Create entities');
 
-    // Create entities
+    // ── Step 1: Create Groups ──
+    const typeGroups: Record<string, string[]> = {};
+    for (const entity of gameSpec.entities) {
+      if (entity.type !== 'player') {
+        if (!typeGroups[entity.type]) typeGroups[entity.type] = [];
+        typeGroups[entity.type]!.push(entity.id);
+      }
+    }
+
+    for (const type of Object.keys(typeGroups)) {
+      lines.push(`    this.${type}Group = this.physics.add.group();`);
+    }
+    lines.push('');
+
+    // ── Step 2: Create entities and add to Groups ──
+    lines.push('    // Create entities');
     for (const entity of gameSpec.entities) {
       const varName = this.getEntityVarName(entity.id);
       const x = entity.position?.x || 0;
       const y = entity.position?.y || 0;
       const sprite = entity.sprite || 'placeholder';
 
-      lines.push(`    this.${varName} = this.physics.add.sprite(${x}, ${y}, '${sprite}');`);
+      lines.push(
+        `    this.${varName} = this.physics.add.sprite(${x}, ${y}, '${sprite}');`
+      );
 
-      // Add physics properties
       if (entity.physics?.collidable) {
         lines.push(`    this.${varName}.setCollideWorldBounds(true);`);
       }
+
+      // Non-player entities join corresponding Group
+      if (entity.type !== 'player' && typeGroups[entity.type]) {
+        lines.push(`    this.${entity.type}Group.add(this.${varName});`);
+      }
     }
 
+    // ── Step 3: Setup collisions from EntityGraph ──
     lines.push('');
-    lines.push('    // Setup collisions');
+    lines.push('    // Setup collisions (from EntityGraph)');
 
-    // Setup collisions (simplified)
-    const players = gameSpec.entities.filter(e => e.type === 'player');
-    const enemies = gameSpec.entities.filter(e => e.type === 'enemy');
+    const collisionEdges = entityGraph.edges.filter(e => e.type === 'collides');
+    const processedPairs = new Set<string>();
 
-    if (players.length > 0 && enemies.length > 0) {
-      const player = players[0]!;
-      lines.push('    // Player-Enemy collision');
-      lines.push('    this.physics.add.collider(');
-      lines.push(`      this.${this.getEntityVarName(player.id)},`);
-      lines.push('      this.enemies,');
-      lines.push('      this.handlePlayerEnemyCollision,');
-      lines.push('      undefined,');
-      lines.push('      this');
-      lines.push('    );');
+    for (const edge of collisionEdges) {
+      // Deduplicate (A-B and B-A only need one collision)
+      const pairKey = [edge.from, edge.to].sort().join(':');
+      if (processedPairs.has(pairKey)) continue;
+      processedPairs.add(pairKey);
+
+      const fromEntity = gameSpec.entities.find(e => e.id === edge.from);
+      const toEntity = gameSpec.entities.find(e => e.id === edge.to);
+      if (!fromEntity || !toEntity) continue;
+
+      // Player uses single reference, other types use Group reference
+      const fromRef = fromEntity.type === 'player'
+        ? `this.${this.getEntityVarName(fromEntity.id)}`
+        : `this.${fromEntity.type}Group`;
+      const toRef = toEntity.type === 'player'
+        ? `this.${this.getEntityVarName(toEntity.id)}`
+        : `this.${toEntity.type}Group`;
+
+      lines.push(`    this.physics.add.collider(${fromRef}, ${toRef});`);
     }
 
+    // ── Step 4: Setup camera ──
     lines.push('');
     lines.push('    // Setup camera');
+    const players = gameSpec.entities.filter(e => e.type === 'player');
     if (players.length > 0) {
-      const player = players[0]!;
-      lines.push(`    this.cameras.main.startFollow(this.${this.getEntityVarName(player.id)});`);
+      lines.push(
+        `    this.cameras.main.startFollow(this.${this.getEntityVarName(players[0]!.id)});`
+      );
     }
 
     return lines.join('\n');
@@ -330,28 +390,76 @@ ${updateCode}
   /**
    * Generate update code
    */
-  private generateUpdateCode(gameSpec: GameSpec, componentGraph: ComponentGraph): string {
+  private generateUpdateCode(
+    gameSpec: GameSpec,
+    componentGraph: ComponentGraph,
+    systemGraph: SystemGraph
+  ): string {
     const lines: string[] = [];
     lines.push('    // Update logic');
 
-    // Add basic input handling for player
     const players = gameSpec.entities.filter(e => e.type === 'player');
-    if (players.length > 0) {
-      const player = players[0]!;
-      const playerVar = this.getEntityVarName(player.id);
+    if (players.length === 0) return lines.join('\n');
 
-      // Check if player has jump component
-      const playerComponents = componentGraph.entityComponents[player.id] || [];
+    const player = players[0]!;
+    const playerVar = this.getEntityVarName(player.id);
+    const playerComponents = componentGraph.entityComponents[player.id] || [];
+
+    // ── Generate keyboard control code based on ComponentGraph ──
+    if (playerComponents.includes('keyboardInput')) {
+      lines.push('');
+      lines.push('    const cursors = this.input.keyboard?.createCursorKeys();');
+
+      // run component → horizontal movement
+      if (playerComponents.includes('run')) {
+        lines.push('');
+        lines.push('    // Horizontal movement (run component)');
+        lines.push('    if (cursors?.left.isDown) {');
+        lines.push(`      this.${playerVar}.setVelocityX(-160);`);
+        lines.push('    } else if (cursors?.right.isDown) {');
+        lines.push(`      this.${playerVar}.setVelocityX(160);`);
+        lines.push('    } else {');
+        lines.push(`      this.${playerVar}.setVelocityX(0);`);
+        lines.push('    }');
+      }
+
+      // jump component → jump
       if (playerComponents.includes('jump')) {
         lines.push('');
-        lines.push('    // Player jump');
-        lines.push(`    const cursors = this.input.keyboard?.createCursorKeys();`);
+        lines.push('    // Jump (jump component)');
         lines.push(`    const spaceKey = this.input.keyboard?.addKey('SPACE');`);
-        lines.push('');
-        lines.push(`    if (spaceKey?.isDown && this.${playerVar}.body?.touching.down) {`);
+        lines.push(
+          `    if (spaceKey?.isDown && this.${playerVar}.body?.touching.down) {`
+        );
         lines.push(`      this.${playerVar}.setVelocityY(-320);`);
         lines.push('    }');
       }
+
+      // shoot component → shooting placeholder
+      if (playerComponents.includes('shoot')) {
+        lines.push('');
+        lines.push('    // Shoot (shoot component)');
+        lines.push(
+          '    // TODO: Implement projectile spawning via adapter bindings'
+        );
+      }
+    }
+
+    // ── Generate system-level update based on SystemGraph ──
+    const activeSystems = systemGraph.systems
+      .filter(s => s.enabled)
+      .map(s => s.type);
+
+    if (activeSystems.includes('scoring')) {
+      lines.push('');
+      lines.push('    // Scoring system');
+      lines.push('    // TODO: Update score display based on scoring config');
+    }
+
+    if (activeSystems.includes('ai')) {
+      lines.push('');
+      lines.push('    // AI system');
+      lines.push('    // TODO: Update enemy AI behaviors (patrol, followTarget)');
     }
 
     return lines.join('\n');
@@ -461,6 +569,8 @@ export default defineConfig({
 }
 
 /**
- * Create default code generator instance
+ * Factory function to create CodeGenerator instance
  */
-export const codeGenerator = new CodeGenerator();
+export function createCodeGenerator(): CodeGenerator {
+  return new CodeGenerator();
+}

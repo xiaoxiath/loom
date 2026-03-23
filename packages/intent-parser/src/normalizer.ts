@@ -121,32 +121,41 @@ function extractKeywords(text: string): string[] {
  * Detect game type from prompt (text should be lowercase)
  */
 function detectGameType(text: string): string | null {
-  // Jumper games
-  if (
-    text.includes('flappy') ||
-    text.includes('jump') ||
-    (text.includes('tap') && text.includes('avoid'))
-  ) {
-    return 'jumper';
-  }
+  // Rules by priority (higher priority first)
+  // Multi-word combinations first, then single words to avoid misclassification
+  const rules: Array<{
+    keywords: string[];
+    excludes?: string[];
+    type: string;
+  }> = [
+    // Exact game names
+    { keywords: ['flappy bird'], type: 'jumper' },
+    { keywords: ['space invaders'], type: 'shooter' },
 
-  // Runner games
-  if (
-    text.includes('runner') ||
-    text.includes('endless') ||
-    (text.includes('run') && text.includes('obstacle'))
-  ) {
-    return 'runner';
-  }
+    // Multi-word combinations (more specific, higher priority)
+    { keywords: ['space', 'runner'], type: 'runner' },
+    { keywords: ['space', 'run'], type: 'runner' },
+    { keywords: ['run', 'obstacle'], type: 'runner' },
+    { keywords: ['tap', 'avoid'], type: 'jumper' },
 
-  // Shooter games
-  if (
-    text.includes('shoot') ||
-    text.includes('shooter') ||
-    text.includes('space') ||
-    text.includes('tank')
-  ) {
-    return 'shooter';
+    // Single words (fallback rules)
+    { keywords: ['flappy'], type: 'jumper' },
+    { keywords: ['jump'], excludes: ['run', 'runner'], type: 'jumper' },
+    { keywords: ['platformer'], type: 'jumper' },
+    { keywords: ['runner'], type: 'runner' },
+    { keywords: ['endless'], type: 'runner' },
+    { keywords: ['shooter'], type: 'shooter' },
+    { keywords: ['shoot'], type: 'shooter' },
+    { keywords: ['tank'], type: 'shooter' },
+    { keywords: ['space'], type: 'shooter' },
+  ];
+
+  for (const rule of rules) {
+    const allMatch = rule.keywords.every(kw => text.includes(kw));
+    const noExclude = !rule.excludes?.some(ex => text.includes(ex));
+    if (allMatch && noExclude) {
+      return rule.type;
+    }
   }
 
   return null;

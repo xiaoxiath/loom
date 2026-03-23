@@ -4,8 +4,7 @@
   "private": true,
   "description": "AI-powered game generation platform",
   "workspaces": [
-    "packages/*",
-    "apps/*"
+    "packages/*"
   ],
   "scripts": {
     "build": "turbo run build",
