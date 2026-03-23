@@ -11,7 +11,6 @@ import type {
   ComponentGraph,
   SystemGraph,
   GameSpec,
-  Entity,
 } from '@loom/core';
 import type { ResolvedAsset } from '@loom/asset-resolver';
 import type { LLMClient } from '@loom/llm-client';
@@ -349,7 +348,7 @@ export const GameConfig: Phaser.Types.Core.GameConfig = {
     resolvedAssets?: ResolvedAsset[]
   ): string {
     // Build entity declarations
-    const entityDeclarations = this.generateEntityDeclarations(gameSpec.entities);
+    const entityDeclarations = this.generateEntityDeclarations(gameSpec);
 
     // Build preload code
     const preloadCode = this.generatePreloadCode(gameSpec, resolvedAssets);
@@ -359,6 +358,9 @@ export const GameConfig: Phaser.Types.Core.GameConfig = {
 
     // Build update code
     const updateCode = this.generateUpdateCode(gameSpec, componentGraph, systemGraph);
+
+    // Build collision handlers
+    const collisionHandlers = this.generateCollisionHandlers(gameSpec, entityGraph);
 
     return `import Phaser from 'phaser';
 
@@ -380,6 +382,7 @@ ${createCode}
   update(time: number, delta: number) {
 ${updateCode}
   }
+${collisionHandlers}
 }
 `;
   }
@@ -400,9 +403,10 @@ ${updateCode}
   /**
    * Generate entity declarations
    */
-  private generateEntityDeclarations(entities: Entity[]): string {
+  private generateEntityDeclarations(gameSpec: GameSpec): string {
     const declarations: string[] = [];
     const groupTypes = new Set<string>();
+    const entities = gameSpec.entities;
 
     for (const entity of entities) {
       const varName = this.getEntityVarName(entity.id);
@@ -420,6 +424,12 @@ ${updateCode}
       declarations.push(
         `  private ${groupType}Group!: Phaser.Physics.Arcade.Group;`
       );
+    }
+
+    // Add scoring UI declarations if scoring is enabled
+    if (gameSpec.scoring) {
+      declarations.push('  private score = 0;');
+      declarations.push('  private scoreText!: Phaser.GameObjects.Text;');
     }
 
     return declarations.join('\n');
@@ -531,7 +541,26 @@ ${updateCode}
         ? `this.${this.getEntityVarName(toEntity.id)}`
         : `this.${toEntity.type}Group`;
 
-      lines.push(`    this.physics.add.collider(${fromRef}, ${toRef});`);
+      // Determine collision behavior based on entity types
+      const isPickup = fromEntity.type === 'pickup' || toEntity.type === 'pickup';
+      const isEnemy = fromEntity.type === 'enemy' || toEntity.type === 'enemy';
+
+      if (isPickup) {
+        // Pickup uses overlap (pass-through + collect)
+        lines.push(
+          `    this.physics.add.overlap(${fromRef}, ${toRef}, `
+          + `this.handleCollect, undefined, this);`
+        );
+      } else if (isEnemy) {
+        // Enemy uses collider + damage callback
+        lines.push(
+          `    this.physics.add.collider(${fromRef}, ${toRef}, `
+          + `this.handlePlayerHit, undefined, this);`
+        );
+      } else {
+        // Other (obstacle, etc.) uses collider without callback
+        lines.push(`    this.physics.add.collider(${fromRef}, ${toRef});`);
+      }
     }
 
     // ── Step 4: Setup camera ──
@@ -542,6 +571,48 @@ ${updateCode}
       lines.push(
         `    this.cameras.main.startFollow(this.${this.getEntityVarName(players[0]!.id)});`
       );
+    }
+
+    // ── Step 5: Setup Scoring UI ──
+    if (gameSpec.scoring) {
+      lines.push('');
+      lines.push('    // Scoring UI');
+      lines.push('    this.scoreText = this.add.text(16, 16, \'Score: 0\', {');
+      lines.push('      fontSize: \'24px\',');
+      lines.push('      color: \'#ffffff\',');
+      lines.push('    });');
+      lines.push('    this.scoreText.setScrollFactor(0); // Fixed on screen');
+    }
+
+    // ── Step 6: Setup Spawners ──
+    const spawners = gameSpec.entities.filter(e => e.type === 'spawner');
+    if (spawners.length > 0) {
+      lines.push('');
+      lines.push('    // Spawner timers');
+
+      for (const spawner of spawners) {
+        const spawnEdges = entityGraph.edges.filter(
+          e => e.from === spawner.id && e.type === 'spawns'
+        );
+
+        for (const edge of spawnEdges) {
+          const targetEntity = gameSpec.entities.find(e => e.id === edge.to);
+          if (!targetEntity) continue;
+
+          lines.push(`    this.time.addEvent({`);
+          lines.push(`      delay: 2000,`);
+          lines.push(`      callback: () => {`);
+          lines.push(`        const spawned = this.physics.add.sprite(`);
+          lines.push(`          Phaser.Math.Between(100, 700),`);
+          lines.push(`          0,`);
+          lines.push(`          '${targetEntity.sprite || 'placeholder'}'`);
+          lines.push(`        );`);
+          lines.push(`        this.${targetEntity.type}Group.add(spawned);`);
+          lines.push(`      },`);
+          lines.push(`      loop: true,`);
+          lines.push(`    });`);
+        }
+      }
     }
 
     return lines.join('\n');
@@ -610,16 +681,53 @@ ${updateCode}
       .filter(s => s.enabled)
       .map(s => s.type);
 
-    if (activeSystems.includes('scoring')) {
+    // ── Distance-based scoring (if scoring.type === 'distance') ──
+    if (gameSpec.scoring?.type === 'distance') {
+      const increment = gameSpec.scoring.increment ?? 1;
       lines.push('');
-      lines.push('    // Scoring system');
-      lines.push('    // TODO: Update score display based on scoring config');
+      lines.push('    // Distance scoring');
+      lines.push(`    this.score += delta * ${increment / 100};`);
+      lines.push('    if (this.scoreText) {');
+      lines.push('      this.scoreText.setText(`Score: ${Math.floor(this.score)}`);');
+      lines.push('    }');
     }
 
     if (activeSystems.includes('ai')) {
       lines.push('');
       lines.push('    // AI system');
-      lines.push('    // TODO: Update enemy AI behaviors (patrol, followTarget)');
+
+      // Generate AI for non-player entities
+      for (const entity of gameSpec.entities) {
+        if (entity.type === 'player') continue;
+
+        const components = componentGraph.entityComponents[entity.id] || [];
+        const varName = this.getEntityVarName(entity.id);
+
+        // Patrol component - horizontal patrol
+        if (components.includes('patrol')) {
+          lines.push('');
+          lines.push(`    // ${entity.id} patrol AI`);
+          lines.push(`    if (this.${varName}.body) {`);
+          lines.push(`      if (this.${varName}.x <= 100) {`);
+          lines.push(`        this.${varName}.setVelocityX(80);`);
+          lines.push(`      } else if (this.${varName}.x >= 700) {`);
+          lines.push(`        this.${varName}.setVelocityX(-80);`);
+          lines.push('      }');
+          lines.push('    }');
+        }
+
+        // FollowTarget component - follow player
+        if (components.includes('followTarget')) {
+          const playerVar = this.getEntityVarName(
+            gameSpec.entities.find(e => e.type === 'player')?.id ?? 'player'
+          );
+          lines.push('');
+          lines.push(`    // ${entity.id} follow target AI`);
+          lines.push(`    this.physics.moveToObject(`);
+          lines.push(`      this.${varName}, this.${playerVar}, 60`);
+          lines.push('    );');
+        }
+      }
     }
 
     return lines.join('\n');
@@ -706,6 +814,62 @@ export default defineConfig({
       content: viteConfig,
       type: 'config',
     };
+  }
+
+  /**
+   * Generate collision handler methods
+   */
+  private generateCollisionHandlers(
+    gameSpec: GameSpec,
+    _entityGraph: EntityGraph
+  ): string {
+    const handlers: string[] = [];
+    const hasEnemies = gameSpec.entities.some(e => e.type === 'enemy');
+    const hasPickups = gameSpec.entities.some(e => e.type === 'pickup');
+
+    // Generate handlePlayerHit for enemies
+    if (hasEnemies) {
+      handlers.push(`
+  private handlePlayerHit(
+    player: Phaser.Types.Physics.Arcade.GameObjectWithBody,
+    enemy: Phaser.Types.Physics.Arcade.GameObjectWithBody
+  ) {
+    // Flash red for damage feedback
+    const playerSprite = player as Phaser.Physics.Arcade.Sprite;
+    playerSprite.setTint(0xff0000);
+    this.time.delayedCall(200, () => playerSprite.clearTint());
+
+    // TODO: Implement health deduction based on health component
+    // For now, just push the player back
+    const body = playerSprite.body;
+    if (body) {
+      const enemySprite = enemy as Phaser.Physics.Arcade.Sprite;
+      const direction = playerSprite.x < enemySprite.x ? -1 : 1;
+      playerSprite.setVelocityX(direction * 200);
+      playerSprite.setVelocityY(-200);
+    }
+  }`);
+    }
+
+    // Generate handleCollect for pickups
+    if (hasPickups) {
+      const increment = gameSpec.scoring?.increment ?? 10;
+      handlers.push(`
+  private handleCollect(
+    player: Phaser.Types.Physics.Arcade.GameObjectWithBody,
+    item: Phaser.Types.Physics.Arcade.GameObjectWithBody
+  ) {
+    const pickup = item as Phaser.Physics.Arcade.Sprite;
+    pickup.disableBody(true, true);
+
+    this.score += ${increment};
+    if (this.scoreText) {
+      this.scoreText.setText(\`Score: \${this.score}\`);
+    }
+  }`);
+    }
+
+    return handlers.join('\n');
   }
 
   /**
