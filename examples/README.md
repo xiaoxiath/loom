@@ -311,4 +311,62 @@ const graphs = planner.plan(flappyBirdSpec);
 
 ---
 
+## 🚀 运行示例
+
+### 使用生成脚本
+
+项目提供了一个便捷的生成脚本，可以将 GameSpec 转换为可运行的 Phaser.js 代码：
+
+#### 生成单个游戏
+
+```bash
+# 在项目根目录运行
+npx tsx examples/generate-game.ts
+
+# 这将生成 Flappy Bird 游戏到 output/flappy-bird/ 目录
+```
+
+#### 批量生成所有示例
+
+```bash
+npx tsx examples/generate-game.ts all
+
+# 将生成所有 3 个示例游戏到 output/ 目录
+```
+
+#### 输出内容
+
+生成的文件包括：
+- `scenes/MainScene.ts` - Phaser 场景代码
+- 配置文件和资源引用
+
+#### 在浏览器中运行
+
+生成的代码可以：
+1. 集成到现有的 Phaser 项目中
+2. 配合 HTML 模板直接在浏览器中打开
+3. 用于学习和理解代码生成逻辑
+
+### 编程方式使用
+
+```typescript
+import { Orchestrator } from '@loom/orchestrator';
+import flappyBirdSpec from './01-flappy-bird.json';
+
+const orchestrator = new Orchestrator({
+  enableAssetResolution: false,
+  enableLLMCodeGen: false,
+  enableCodeReview: false
+});
+
+const result = await orchestrator.generate({ gameSpec: flappyBirdSpec });
+
+// 保存生成的文件
+result.codeOutput.files.forEach(file => {
+  fs.writeFileSync(`output/${file.path}`, file.content);
+});
+```
+
+---
+
 **这些示例是 Loom 平台的测试基准，确保核心功能正常工作。**

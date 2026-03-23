@@ -13,7 +13,14 @@
       "Bash(git rm:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(grep -r \"web\\\\|ui\\\\|frontend\\\\|playground\" /Users/bytedance/workspace/study/loom/*.md)",
+      "Bash(find /Users/bytedance/workspace/study/loom/output -type f -name *.js -o -name *.html)",
+      "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --no-git --use-pnpm)",
+      "Bash(yes \"\")",
+      "Bash(npx create-next-app@latest /Users/bytedance/workspace/study/loom/apps/web --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --no-git --use-pnpm)",
+      "Bash(curl -s http://localhost:3000)",
+      "Bash(curl -s http://localhost:3000/api/examples/flappy-bird)"
     ]
   }
 }
