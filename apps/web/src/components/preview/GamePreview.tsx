@@ -4,7 +4,6 @@ import { useEffect, useState, useMemo } from 'react';
 import { useGenerationStore } from '@/lib/stores/generationStore';
 import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
-import { stripTypeScript } from '@/lib/utils/typescript-stripper';
 
 interface GeneratedFile {
   path: string;
@@ -12,50 +11,35 @@ interface GeneratedFile {
   type: 'scene' | 'entity' | 'system' | 'config' | 'asset' | 'html' | 'package';
 }
 
-// Extract scene and config files to avoid re-processing unrelated files
-function extractGameFiles(files: GeneratedFile[]) {
-  return {
-    scene: files.find((f) => f.type === 'scene')?.content || '',
-    config: files.find((f) => f.type === 'config')?.content || '',
-  };
-}
-
 export function GamePreview() {
   const { files } = useGenerationStore();
   const [blobUrl, setBlobUrl] = useState<string>('');
   const [iframeKey, setIframeKey] = useState(0);
 
-  // Memoize extracted files to prevent unnecessary re-renders
-  const gameFiles = useMemo(() => extractGameFiles(files), [files]);
-
-  // Memoize processed code to avoid re-transforming on every render
-  const processedCode = useMemo(() => {
-    if (!gameFiles.scene && !gameFiles.config) {
-      return null;
-    }
-    return {
-      scene: stripTypeScript(gameFiles.scene),
-      config: stripTypeScript(gameFiles.config),
-    };
-  }, [gameFiles.scene, gameFiles.config]);
+  // Memoize file extraction to prevent unnecessary re-renders
+  const gameFiles = useMemo(() => {
+    const scene = files.find((f) => f.type === 'scene')?.content || '';
+    const config = files.find((f) => f.type === 'config')?.content || '';
+    return { scene, config };
+  }, [files]);
 
   useEffect(() => {
-    if (!processedCode) {
+    if (!gameFiles.scene && !gameFiles.config) {
       setBlobUrl('');
       return;
     }
 
-    // Build HTML with processed code
-    const htmlContent = buildGameHTML(processedCode);
+    // Build HTML with compiled JavaScript (already compiled by API)
+    const htmlContent = buildGameHTML(gameFiles);
     const blob = new Blob([htmlContent], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
 
     setBlobUrl(url);
 
     return () => URL.revokeObjectURL(url);
-  }, [processedCode]);
+  }, [gameFiles]);
 
-  // HTML template builder - pure function, no dependencies
+  // Pure function: build HTML template
   function buildGameHTML(code: { scene: string; config: string }): string {
     return `
 <!DOCTYPE html>
