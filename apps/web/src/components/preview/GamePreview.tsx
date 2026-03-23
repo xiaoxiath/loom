@@ -71,6 +71,8 @@ export function GamePreview() {
 </head>
 <body>
   <div id="game-container"></div>
+  <!-- Load Phaser from CDN (faster than bundling) -->
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
   <script>
     try {
       ${code}

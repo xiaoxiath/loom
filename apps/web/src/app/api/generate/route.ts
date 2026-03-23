@@ -87,7 +87,8 @@ export async function POST(request: NextRequest) {
       target: ['es2020'],
       outfile: 'bundle.js',
       write: false, // Return result instead of writing to disk
-      external: [], // Bundle everything including Phaser
+      // Mark Phaser as external - loaded from CDN in HTML
+      external: ['phaser'],
       loader: {
         '.png': 'file',
         '.jpg': 'file',

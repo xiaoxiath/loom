@@ -184,8 +184,7 @@ export class CodeGenerator {
     const height = gameSpec.settings.worldHeight || 600;
     const bgColor = gameSpec.settings.backgroundColor || '#000000';
 
-    const config = `import Phaser from 'phaser';
-import { MainScene } from './scenes/MainScene';
+    const config = `import { MainScene } from './scenes/MainScene';
 
 export const GameConfig: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -362,9 +361,7 @@ export const GameConfig: Phaser.Types.Core.GameConfig = {
     // Build collision handlers
     const collisionHandlers = this.generateCollisionHandlers(gameSpec, entityGraph);
 
-    return `import Phaser from 'phaser';
-
-export class MainScene extends Phaser.Scene {
+    return `export class MainScene extends Phaser.Scene {
 ${entityDeclarations}
 
   constructor() {
@@ -456,9 +453,8 @@ ${collisionHandlers}
     for (const entity of gameSpec.entities) {
       if (entity.sprite) {
         const spriteKey = entity.sprite;
-        // Use Asset Resolver's result first, fallback to default path
-        const spritePath = assetMap.get(spriteKey)
-          ?? `assets/sprites/${spriteKey}.png`;
+        const cachedPath = assetMap.get(spriteKey);
+        const spritePath = cachedPath ?? this.generatePlaceholderDataUrl(spriteKey);
         lines.push(`    this.load.image('${spriteKey}', '${spritePath}');`);
       }
     }
@@ -737,8 +733,7 @@ ${collisionHandlers}
    * Generate main entry point
    */
   private generateMain(_gameSpec: GameSpec): GeneratedFile {
-    const main = `import Phaser from 'phaser';
-import { GameConfig } from './config';
+    const main = `import { GameConfig } from './config';
 
 window.addEventListener('load', () => {
   new Phaser.Game(GameConfig);
@@ -877,6 +872,30 @@ export default defineConfig({
    */
   private getEntityVarName(entityId: string): string {
     return entityId.replace(/-/g, '_');
+  }
+
+  /**
+   * Generate placeholder sprite as SVG data URL
+   */
+  private generatePlaceholderDataUrl(spriteKey: string): string {
+    const hue = this.hashCode(spriteKey) % 360;
+    const color = `hsl(${hue}, 70%, 50%)`;
+    // URL-encode the SVG to avoid quote issues in generated code
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><rect width="32" height="32" fill="${color}"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="8" fill="white">${spriteKey.slice(0, 4)}</text></svg>`;
+    return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+  }
+
+  /**
+   * Simple hash function for consistent color generation
+   */
+  private hashCode(str: string): number {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash;
+    }
+    return Math.abs(hash);
   }
 
   /**

@@ -21,7 +21,9 @@
       "Bash(npx create-next-app@latest /Users/bytedance/workspace/study/loom/apps/web --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --no-git --use-pnpm)",
       "Bash(curl -s http://localhost:3000)",
       "Bash(curl -s http://localhost:3000/api/examples/flappy-bird)",
-      "Bash(npx tsx:*)"
+      "Bash(npx tsx:*)",
+      "Bash(curl:*)",
+      "Bash(kill 98148)"
     ]
   }
 }
