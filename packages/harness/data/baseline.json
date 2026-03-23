@@ -1,0 +1,22 @@
+{
+  "timestamp": "2026-03-23T09:02:39.388Z",
+  "avgScore": 0,
+  "passRate": 0,
+  "results": [
+    {
+      "name": "Flappy Bird",
+      "score": 0,
+      "passed": false
+    },
+    {
+      "name": "Galactic Shooter",
+      "score": 0,
+      "passed": false
+    },
+    {
+      "name": "Space Runner",
+      "score": 0,
+      "passed": false
+    }
+  ]
+}

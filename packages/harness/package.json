@@ -1,0 +1,45 @@
+{
+  "name": "@loom/harness",
+  "version": "0.1.0",
+  "description": "Evaluation harness for Loom game generation platform",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts --clean",
+    "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx src/e2e-golden-test.ts",
+    "eval": "tsx src/e2e-golden-test.ts",
+    "clean": "rm -rf dist node_modules"
+  },
+  "dependencies": {
+    "@loom/core": "workspace:*",
+    "@loom/orchestrator": "workspace:*",
+    "@loom/code-generator": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "tsup": "^8.0.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.3.0"
+  },
+  "files": [
+    "dist",
+    "data"
+  ],
+  "keywords": [
+    "loom",
+    "game",
+    "ai",
+    "evaluation",
+    "testing"
+  ]
+}

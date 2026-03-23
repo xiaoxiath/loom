@@ -126,6 +126,31 @@ importers:
         specifier: ^5.3.0
         version: 5.9.3
 
+  packages/harness:
+    dependencies:
+      '@loom/code-generator':
+        specifier: workspace:*
+        version: link:../code-generator
+      '@loom/core':
+        specifier: workspace:*
+        version: link:../core
+      '@loom/orchestrator':
+        specifier: workspace:*
+        version: link:../orchestrator
+    devDependencies:
+      '@types/node':
+        specifier: ^20.10.0
+        version: 20.19.37
+      tsup:
+        specifier: ^8.0.0
+        version: 8.5.1(tsx@4.21.0)(typescript@5.9.3)
+      tsx:
+        specifier: ^4.21.0
+        version: 4.21.0
+      typescript:
+        specifier: ^5.3.0
+        version: 5.9.3
+
   packages/intent-parser:
     dependencies:
       '@loom/code-generator':

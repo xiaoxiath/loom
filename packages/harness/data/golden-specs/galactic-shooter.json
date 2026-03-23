@@ -1,0 +1,90 @@
+{
+  "meta": {
+    "title": "Galactic Shooter",
+    "genre": "shooter",
+    "camera": "topdown",
+    "dimension": "2d"
+  },
+  "settings": {
+    "width": 800,
+    "height": 600,
+    "backgroundColor": "#0a0a1a",
+    "gravity": { "x": 0, "y": 0 }
+  },
+  "entities": [
+    {
+      "id": "player",
+      "type": "player",
+      "sprite": "player-ship",
+      "position": { "x": 400, "y": 500 },
+      "physics": {
+        "collidable": true
+      },
+      "components": ["run", "shoot", "keyboardInput"]
+    },
+    {
+      "id": "enemy",
+      "type": "enemy",
+      "sprite": "enemy-ship",
+      "position": { "x": 400, "y": 100 },
+      "physics": {
+        "collidable": true
+      },
+      "components": ["patrol"]
+    },
+    {
+      "id": "bullet",
+      "type": "projectile",
+      "sprite": "bullet",
+      "position": { "x": 400, "y": 400 },
+      "physics": {
+        "collidable": true
+      },
+      "components": []
+    },
+    {
+      "id": "powerup",
+      "type": "pickup",
+      "sprite": "powerup",
+      "position": { "x": 300, "y": 200 },
+      "physics": {
+        "collidable": true
+      },
+      "components": []
+    }
+  ],
+  "systems": ["physics", "input", "ai"],
+  "mechanics": ["shoot", "dodge", "collect"],
+  "scoring": {
+    "type": "collect",
+    "increment": 100
+  },
+  "ui": {
+    "hud": {
+      "score": true,
+      "health": true
+    }
+  },
+  "assets": [
+    {
+      "id": "player-ship",
+      "type": "sprite",
+      "source": "placeholder"
+    },
+    {
+      "id": "enemy-ship",
+      "type": "sprite",
+      "source": "placeholder"
+    },
+    {
+      "id": "bullet",
+      "type": "sprite",
+      "source": "placeholder"
+    },
+    {
+      "id": "powerup",
+      "type": "sprite",
+      "source": "placeholder"
+    }
+  ]
+}

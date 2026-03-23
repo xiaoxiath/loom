@@ -1,0 +1,76 @@
+{
+  "meta": {
+    "title": "Flappy Bird",
+    "genre": "runner",
+    "camera": "side-scroll",
+    "dimension": "2d"
+  },
+  "settings": {
+    "width": 800,
+    "height": 600,
+    "backgroundColor": "#87CEEB",
+    "gravity": { "x": 0, "y": 800 }
+  },
+  "entities": [
+    {
+      "id": "player",
+      "type": "player",
+      "sprite": "bird",
+      "position": { "x": 100, "y": 300 },
+      "physics": {
+        "collidable": true
+      },
+      "components": ["jump", "keyboardInput"]
+    },
+    {
+      "id": "pipe-top",
+      "type": "obstacle",
+      "sprite": "pipe-top",
+      "position": { "x": 400, "y": 150 },
+      "physics": {
+        "collidable": true,
+        "static": true
+      },
+      "components": []
+    },
+    {
+      "id": "pipe-bottom",
+      "type": "obstacle",
+      "sprite": "pipe-bottom",
+      "position": { "x": 400, "y": 450 },
+      "physics": {
+        "collidable": true,
+        "static": true
+      },
+      "components": []
+    }
+  ],
+  "systems": ["physics", "input"],
+  "mechanics": ["jump", "dodge"],
+  "scoring": {
+    "type": "distance",
+    "increment": 1
+  },
+  "ui": {
+    "hud": {
+      "score": true
+    }
+  },
+  "assets": [
+    {
+      "id": "bird",
+      "type": "sprite",
+      "source": "placeholder"
+    },
+    {
+      "id": "pipe-top",
+      "type": "sprite",
+      "source": "placeholder"
+    },
+    {
+      "id": "pipe-bottom",
+      "type": "sprite",
+      "source": "placeholder"
+    }
+  ]
+}

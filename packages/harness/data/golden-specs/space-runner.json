@@ -1,0 +1,74 @@
+{
+  "meta": {
+    "title": "Space Runner",
+    "genre": "runner",
+    "camera": "side-scroll",
+    "dimension": "2d"
+  },
+  "settings": {
+    "width": 800,
+    "height": 600,
+    "backgroundColor": "#000011",
+    "gravity": { "x": 0, "y": 300 }
+  },
+  "entities": [
+    {
+      "id": "player",
+      "type": "player",
+      "sprite": "spaceship",
+      "position": { "x": 100, "y": 300 },
+      "physics": {
+        "collidable": true
+      },
+      "components": ["run", "jump", "keyboardInput"]
+    },
+    {
+      "id": "asteroid",
+      "type": "enemy",
+      "sprite": "asteroid",
+      "position": { "x": 600, "y": 300 },
+      "physics": {
+        "collidable": true
+      },
+      "components": ["patrol"]
+    },
+    {
+      "id": "coin",
+      "type": "pickup",
+      "sprite": "coin",
+      "position": { "x": 500, "y": 200 },
+      "physics": {
+        "collidable": true
+      },
+      "components": []
+    }
+  ],
+  "systems": ["physics", "input", "ai"],
+  "mechanics": ["run", "jump", "collect", "dodge"],
+  "scoring": {
+    "type": "collect",
+    "increment": 10
+  },
+  "ui": {
+    "hud": {
+      "score": true
+    }
+  },
+  "assets": [
+    {
+      "id": "spaceship",
+      "type": "sprite",
+      "source": "placeholder"
+    },
+    {
+      "id": "asteroid",
+      "type": "sprite",
+      "source": "placeholder"
+    },
+    {
+      "id": "coin",
+      "type": "sprite",
+      "source": "placeholder"
+    }
+  ]
+}
