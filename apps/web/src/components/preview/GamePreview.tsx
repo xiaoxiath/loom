@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useGenerationStore } from '@/lib/stores/generationStore';
 import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
+import { stripTypeScript } from '@/lib/utils/typescript-stripper';
 
 interface GeneratedFile {
   path: string;
@@ -11,57 +12,51 @@ interface GeneratedFile {
   type: 'scene' | 'entity' | 'system' | 'config' | 'asset' | 'html' | 'package';
 }
 
+// Extract scene and config files to avoid re-processing unrelated files
+function extractGameFiles(files: GeneratedFile[]) {
+  return {
+    scene: files.find((f) => f.type === 'scene')?.content || '',
+    config: files.find((f) => f.type === 'config')?.content || '',
+  };
+}
+
 export function GamePreview() {
   const { files } = useGenerationStore();
   const [blobUrl, setBlobUrl] = useState<string>('');
   const [iframeKey, setIframeKey] = useState(0);
 
+  // Memoize extracted files to prevent unnecessary re-renders
+  const gameFiles = useMemo(() => extractGameFiles(files), [files]);
+
+  // Memoize processed code to avoid re-transforming on every render
+  const processedCode = useMemo(() => {
+    if (!gameFiles.scene && !gameFiles.config) {
+      return null;
+    }
+    return {
+      scene: stripTypeScript(gameFiles.scene),
+      config: stripTypeScript(gameFiles.config),
+    };
+  }, [gameFiles.scene, gameFiles.config]);
+
   useEffect(() => {
-    if (files.length === 0) {
+    if (!processedCode) {
       setBlobUrl('');
       return;
     }
 
-    // 构建 HTML 内容
-    const htmlContent = buildGameHTML(files);
+    // Build HTML with processed code
+    const htmlContent = buildGameHTML(processedCode);
     const blob = new Blob([htmlContent], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
 
     setBlobUrl(url);
 
     return () => URL.revokeObjectURL(url);
-  }, [files]);
+  }, [processedCode]);
 
-  const buildGameHTML = (gameFiles: GeneratedFile[]): string => {
-    const sceneFile = gameFiles.find((f) => f.type === 'scene');
-    const configFile = gameFiles.find((f) => f.type === 'config');
-
-    // 移除 TypeScript 特定语法，转换为浏览器可运行的代码
-    const processCode = (code: string): string => {
-      if (!code) return '';
-
-      return code
-        // 移除 export 语句
-        .replace(/export\s+(default\s+)?/g, '')
-        // 移除 import 语句
-        .replace(/import\s+.*?from\s+['"].*?['"];?\n?/g, '')
-        // 完全移除私有字段声明（TypeScript 类字段声明在 JS 中不需要）
-        .replace(/^\s*(?:private|public)\s+\w+!:\s*[^;]+;\s*$/gm, '')
-        // 移除带初始值的私有/公共字段声明，保留初始值
-        .replace(/^\s*(?:private|public)\s+(\w+)\s*(?::\s*[^;=]+)?\s*=\s*/gm, '  $1 = ')
-        // 移除函数参数的类型注解
-        .replace(/\((\w+):\s*[^,)]+\)/g, '($1)')
-        // 移除返回类型注解
-        .replace(/\):\s*[A-Za-z.<>[\]|]+\s*{/g, '): {')
-        // 移除泛型参数
-        .replace(/<[^>]+>/g, '')
-        // 清理多余的空行
-        .replace(/\n\s*\n\s*\n/g, '\n\n');
-    };
-
-    const sceneCode = processCode(sceneFile?.content || '');
-    const configCode = processCode(configFile?.content || '');
-
+  // HTML template builder - pure function, no dependencies
+  function buildGameHTML(code: { scene: string; config: string }): string {
     return `
 <!DOCTYPE html>
 <html>
@@ -71,8 +66,8 @@ export function GamePreview() {
 </head>
 <body style="margin:0; padding:0; overflow:hidden; background:#000;">
   <script>
-    ${configCode}
-    ${sceneCode}
+    ${code.config}
+    ${code.scene}
 
     try {
       const config = {
@@ -98,13 +93,11 @@ export function GamePreview() {
   <div id="game" style="display: flex; justify-content: center; align-items: center; min-height: 100vh;"></div>
 </body>
 </html>`;
-  };
+  }
 
-  const handleReload = () => {
-    setIframeKey((prev) => prev + 1);
-  };
+  const handleReload = () => setIframeKey((k) => k + 1);
 
-  if (files.length === 0) {
+  if (files.length === 0 || !blobUrl) {
     return (
       <div className="h-full flex items-center justify-center text-muted-foreground bg-slate-900">
         <div className="text-center">
