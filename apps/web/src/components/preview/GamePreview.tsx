@@ -36,6 +36,30 @@ export function GamePreview() {
     const sceneFile = gameFiles.find((f) => f.type === 'scene');
     const configFile = gameFiles.find((f) => f.type === 'config');
 
+    // 移除 TypeScript 特定语法，转换为浏览器可运行的代码
+    const processCode = (code: string): string => {
+      if (!code) return '';
+
+      return code
+        // 移除 export 语句
+        .replace(/export\s+(default\s+)?/g, '')
+        // 移除 import 语句
+        .replace(/import\s+.*?from\s+['"].*?['"];?\n?/g, '')
+        // 移除私有字段声明中的类型注解 (private player!: Phaser.Physics.Arcade.Sprite;)
+        .replace(/private\s+(\w+)!:\s*[^;]+;/g, 'private $1;')
+        // 移除其他字段的类型注解 (player: Phaser.Physics.Arcade.Sprite)
+        .replace(/^(\s+)(?:private\s+)?(?:public\s+)?(\w+)(?:\?)?:\s*[A-Za-z.<>[\]|]+\s*([=;])/gm, '$1$2$3')
+        // 移除函数参数的类型注解
+        .replace(/\((\w+):\s*[^,)]+\)/g, '($1)')
+        // 移除返回类型注解
+        .replace(/\):\s*[A-Za-z.<>[\]|]+\s*{/g, '): {')
+        // 移除泛型参数
+        .replace(/<[^>]+>/g, '');
+    };
+
+    const sceneCode = processCode(sceneFile?.content || '');
+    const configCode = processCode(configFile?.content || '');
+
     return `
 <!DOCTYPE html>
 <html>
@@ -45,8 +69,8 @@ export function GamePreview() {
 </head>
 <body style="margin:0; padding:0; overflow:hidden; background:#000;">
   <script>
-    ${configFile?.content || ''}
-    ${sceneFile?.content || ''}
+    ${configCode}
+    ${sceneCode}
 
     try {
       const config = {
@@ -66,7 +90,7 @@ export function GamePreview() {
       new Phaser.Game(config);
     } catch (error) {
       console.error('Game initialization error:', error);
-      document.body.innerHTML = '<div style="color: white; padding: 20px;">Game failed to load: ' + error.message + '</div>';
+      document.body.innerHTML = '<div style="color: white; padding: 20px; font-family: monospace; background: #1e1e1e;">Game failed to load: ' + error.message + '<br><br>Please check the console for details.</div>';
     }
   </script>
   <div id="game" style="display: flex; justify-content: center; align-items: center; min-height: 100vh;"></div>
