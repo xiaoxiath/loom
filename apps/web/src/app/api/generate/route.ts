@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
         {
           path: 'bundle.js',
           content: bundleContent,
-          type: 'config' as const,
+          type: 'bundle' as const,  // Changed from 'config' to 'bundle'
         },
         ...result.codeOutput.files.map((f) => ({
           path: f.path,
