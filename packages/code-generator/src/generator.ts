@@ -510,12 +510,25 @@ ${collisionHandlers}
       const y = entity.position?.y ?? 0;
       const sprite = entity.sprite ?? 'placeholder';
 
-      lines.push(
-        `    this.${varName} = this.physics.add.sprite(${x}, ${y}, '${sprite}');`
-      );
+      // Use static sprite for static entities
+      const isStatic = entity.physics?.static === true;
+      if (isStatic) {
+        lines.push(
+          `    this.${varName} = this.physics.add.staticSprite(${x}, ${y}, '${sprite}');`
+        );
+      } else {
+        lines.push(
+          `    this.${varName} = this.physics.add.sprite(${x}, ${y}, '${sprite}');`
+        );
+      }
 
       if (entity.physics?.collidable) {
         lines.push(`    this.${varName}.setCollideWorldBounds(true);`);
+      }
+
+      // Static entities should be immovable
+      if (isStatic) {
+        lines.push(`    this.${varName}.setImmovable(true);`);
       }
 
       // Non-player entities join corresponding Group
@@ -674,11 +687,23 @@ ${collisionHandlers}
       if (playerComponents.includes('jump')) {
         lines.push('');
         lines.push('    // Jump (jump component)');
-        lines.push(
-          `    if (this.spaceKey?.isDown && this.${playerVar}.body?.touching.down) {`
-        );
-        lines.push(`      this.${playerVar}.setVelocityY(-320);`);
-        lines.push('    }');
+        // Check if this is a flappy-bird style game (has gravity but player can always jump)
+        const hasGravity = gameSpec.settings?.gravity && gameSpec.settings.gravity > 0;
+        if (hasGravity) {
+          // For games with gravity, allow jumping anytime (like Flappy Bird)
+          lines.push(
+            `    if (this.spaceKey?.isDown) {`
+          );
+          lines.push(`      this.${playerVar}.setVelocityY(-320);`);
+          lines.push('    }');
+        } else {
+          // For platformers, require touching ground
+          lines.push(
+            `    if (this.spaceKey?.isDown && this.${playerVar}.body?.touching.down) {`
+          );
+          lines.push(`      this.${playerVar}.setVelocityY(-320);`);
+          lines.push('    }');
+        }
       }
 
       // shoot component → shooting placeholder
