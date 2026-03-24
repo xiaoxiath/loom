@@ -264,23 +264,44 @@ export const GameConfig: Phaser.Types.Core.GameConfig = {
           console.warn(
             `LLM generation failed, falling back to template: ${error}`
           );
-          sceneCode = this.generateSceneViaTemplate(
-            gameSpec, entityGraph, componentGraph, systemGraph, resolvedAssets
-          );
-          this.diagnostics.generationMethod = 'template-fallback';
-          this.diagnostics.warnings.push(
-            `LLM generation failed: ${error}. Used template fallback.`
-          );
+
+          // Check if we should use enhanced template
+          const shouldUseEnhanced = this.shouldUseEnhancedTemplate(gameSpec);
+          if (shouldUseEnhanced) {
+            sceneCode = await this.generateSceneViaEnhancedTemplate(
+              gameSpec, entityGraph, componentGraph
+            );
+            this.diagnostics.generationMethod = 'template-enhanced';
+            this.diagnostics.warnings.push(
+              `LLM generation failed: ${error}. Used enhanced template.`
+            );
+          } else {
+            sceneCode = this.generateSceneViaTemplate(
+              gameSpec, entityGraph, componentGraph, systemGraph, resolvedAssets
+            );
+            this.diagnostics.generationMethod = 'template-fallback';
+            this.diagnostics.warnings.push(
+              `LLM generation failed: ${error}. Used template fallback.`
+            );
+          }
         } else {
           throw error;
         }
       }
     } else {
-      // No LLM client, use template directly
-      sceneCode = this.generateSceneViaTemplate(
-        gameSpec, entityGraph, componentGraph, systemGraph, resolvedAssets
-      );
-      this.diagnostics.generationMethod = 'template';
+      // No LLM client, check for enhanced template
+      const shouldUseEnhanced = this.shouldUseEnhancedTemplate(gameSpec);
+      if (shouldUseEnhanced) {
+        sceneCode = await this.generateSceneViaEnhancedTemplate(
+          gameSpec, entityGraph, componentGraph
+        );
+        this.diagnostics.generationMethod = 'template-enhanced';
+      } else {
+        sceneCode = this.generateSceneViaTemplate(
+          gameSpec, entityGraph, componentGraph, systemGraph, resolvedAssets
+        );
+        this.diagnostics.generationMethod = 'template';
+      }
     }
 
     this.diagnostics.generatedFiles.push('src/scenes/MainScene.ts');
@@ -1020,6 +1041,32 @@ export default defineConfig({
       generatedFiles: [],
       skippedFiles: [],
     };
+  }
+
+  /**
+   * Check if game should use enhanced template
+   */
+  private shouldUseEnhancedTemplate(gameSpec: GameSpec): boolean {
+    return (
+      gameSpec.meta.genre === 'runner' ||
+      (gameSpec.mechanics.includes('jump') && gameSpec.mechanics.includes('avoid'))
+    );
+  }
+
+  /**
+   * Generate scene using enhanced template
+   */
+  private async generateSceneViaEnhancedTemplate(
+    gameSpec: GameSpec,
+    entityGraph: EntityGraph,
+    componentGraph: ComponentGraph
+  ): Promise<string> {
+    const { generateEnhancedFlappyGame } = await import('./templates/enhanced-flappy.js');
+    return generateEnhancedFlappyGame({
+      gameSpec,
+      entityGraph,
+      componentGraph,
+    });
   }
 }
 
