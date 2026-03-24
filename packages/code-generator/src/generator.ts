@@ -388,7 +388,17 @@ ${collisionHandlers}
    */
   private generatePlaceholderTexture(key: string, color: string) {
     const graphics = this.make.graphics({ x: 0, y: 0 });
-    graphics.fillStyle(Phaser.Display.Color.HexStringToColor(color).color);
+
+    // Parse HSL values from color string
+    const hslMatch = color.match(/hsl\\((\\d+),\\s*(\\d+)%,\\s*(\\d+)%\\)/);
+    const h = parseInt(hslMatch?.[1] ?? '0');
+    const s = parseInt(hslMatch?.[2] ?? '70') / 100;
+    const l = parseInt(hslMatch?.[3] ?? '50') / 100;
+
+    // Convert HSL to color integer
+    const colorInt = Phaser.Display.Color.HSLToColor(h, s, l).color;
+
+    graphics.fillStyle(colorInt);
     graphics.fillRect(0, 0, 32, 32);
     graphics.generateTexture(key, 32, 32);
     graphics.destroy();
