@@ -551,19 +551,16 @@ ${collisionHandlers}
         lines.push(
           `    this.${varName} = this.physics.add.staticSprite(${x}, ${y}, '${sprite}');`
         );
+        // Static sprites are immovable by default, but be explicit
+        lines.push(`    this.${varName}.setImmovable(true);`);
       } else {
         lines.push(
           `    this.${varName} = this.physics.add.sprite(${x}, ${y}, '${sprite}');`
         );
-      }
-
-      if (entity.physics?.collidable) {
-        lines.push(`    this.${varName}.setCollideWorldBounds(true);`);
-      }
-
-      // Static entities should be immovable
-      if (isStatic) {
-        lines.push(`    this.${varName}.setImmovable(true);`);
+        // Only dynamic sprites can collide with world bounds
+        if (entity.physics?.collidable) {
+          lines.push(`    this.${varName}.setCollideWorldBounds(true);`);
+        }
       }
 
       // Non-player entities join corresponding Group
