@@ -20,31 +20,27 @@ export const keyboardInputAdapter: RuntimeAdapter<KeyboardInputAdapterConfig, Ph
     const sprite = engine.scene.children.get(entity.id) as PhaserSprite | undefined;
     if (!sprite) return;
 
-    // Create keyboard keys based on config
+    // Initialize keyboard keys once during creation (not per-frame)
     sprite.inputKeys = {} as Record<string, PhaserKey>;
+
+    // Create cursor keys once and cache them
+    let cursors: PhaserCursorKeys | undefined;
 
     for (const [action, key] of Object.entries(config)) {
       // Map common keys
       if (key === 'UP' || key === 'DOWN' || key === 'LEFT' || key === 'RIGHT') {
-        const cursors = engine.input.keyboard?.createCursorKeys();
+        // Create cursor keys only once, reuse for all direction mappings
+        if (!cursors) {
+          cursors = engine.input.keyboard?.createCursorKeys();
+        }
         if (cursors) {
           sprite.inputKeys[action] = cursors[key.toLowerCase() as keyof PhaserCursorKeys];
         }
-      } else if (key === 'SPACE') {
-        const spaceKey = engine.input.keyboard?.addKey('SPACE');
-        if (spaceKey) {
-          sprite.inputKeys[action] = spaceKey;
-        }
-      } else if (key === 'W' || key === 'A' || key === 'S' || key === 'D') {
+      } else {
+        // All other keys use addKey (SPACE, WASD, etc.)
         const mappedKey = engine.input.keyboard?.addKey(key);
         if (mappedKey) {
           sprite.inputKeys[action] = mappedKey;
-        }
-      } else {
-        // Generic key mapping
-        const genericKey = engine.input.keyboard?.addKey(key);
-        if (genericKey) {
-          sprite.inputKeys[action] = genericKey;
         }
       }
     }
@@ -59,7 +55,7 @@ export const keyboardInputAdapter: RuntimeAdapter<KeyboardInputAdapterConfig, Ph
     const sprite = engine.scene.children.get(entity.id) as PhaserSprite | undefined;
     if (!sprite || !sprite.inputKeys) return;
 
-    // Check key states and store on entity for other adapters to use
+    // Read key states from already-created key objects (no re-creation per frame)
     sprite.keyState = {};
     for (const action of Object.keys(config)) {
       const keyObj = sprite.inputKeys[action];

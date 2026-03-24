@@ -25,8 +25,6 @@ export const collisionAdapter: RuntimeAdapter<CollisionAdapterConfig, PhaserEngi
     sprite.body.setCollideWorldBounds(true);
 
     // Set up collision groups based on config.with
-    // In a full implementation, this would query the scene for entities
-    // matching the types in config.with and create colliders
     for (const targetEntityId of config.with) {
       const targetSprite = engine.scene.children.get(targetEntityId) as PhaserSprite | undefined;
       if (targetSprite && targetSprite.body) {
@@ -44,13 +42,60 @@ export const collisionAdapter: RuntimeAdapter<CollisionAdapterConfig, PhaserEngi
   },
 
   onCollision: (
-    _entity: Entity,
-    _other: Entity,
-    _config: CollisionAdapterConfig,
-    _engine: PhaserEngine
+    entity: Entity,
+    other: Entity,
+    config: CollisionAdapterConfig,
+    engine: PhaserEngine
   ) => {
-    // This would be called by the collision system
-    // Implementation would depend on event system design
+    const sprite = engine.scene.children.get(entity.id) as PhaserSprite | undefined;
+    const otherSprite = engine.scene.children.get(other.id) as PhaserSprite | undefined;
+    if (!sprite || !otherSprite) return;
+
+    // Only react if the other entity's type is in our collision target list
+    if (!config.with.includes(other.type)) return;
+
+    // Emit collision event on the sprite for other adapters to consume
+    if (sprite.collisionCallbacks) {
+      const callbackName = config.callback ?? 'default';
+      const callback = sprite.collisionCallbacks[callbackName];
+      if (callback) {
+        callback(sprite, otherSprite);
+        return;
+      }
+    }
+
+    // Default collision behavior when no callback is registered:
+    // Apply damage if the entity has health state
+    if (sprite.healthState) {
+      const now = Date.now();
+      const hs = sprite.healthState;
+
+      // Respect invincibility frames
+      if (hs.invincible && now - hs.lastDamageTime < hs.invincibleDuration) {
+        return;
+      }
+
+      const damageAmount = 1;
+      hs.current = Math.max(0, hs.current - damageAmount);
+      hs.lastDamageTime = now;
+
+      // Destroy the entity when health reaches zero
+      if (hs.current <= 0) {
+        sprite.destroy();
+      }
+    }
+
+    // If the entity has destroyOnCollision targets, check and destroy
+    if (sprite.destroyOnCollisionTargets && sprite.destroyOnCollisionTargets.includes(other.type)) {
+      const delay = sprite.destroyDelay || 0;
+      if (delay > 0) {
+        engine.scene.time.delayedCall(delay, () => {
+          sprite.destroy();
+        });
+      } else {
+        sprite.destroy();
+      }
+    }
   },
 
   dependencies: [],

@@ -25,7 +25,7 @@ export interface GameSettings {
   backgroundColor?: string;
   worldWidth?: number;
   worldHeight?: number;
-  [key: string]: unknown;
+  metadata?: Record<string, unknown>;
 }
 
 /**
@@ -35,7 +35,7 @@ export interface SceneConfig {
   type: SceneType;
   cameraFollow?: string;
   spawn?: Position;
-  [key: string]: unknown;
+  metadata?: Record<string, unknown>;
 }
 
 /**
@@ -48,7 +48,7 @@ export interface Entity {
   position?: Position;
   physics?: PhysicsConfig;
   components: string[];
-  [key: string]: unknown;
+  metadata?: Record<string, unknown>;
 }
 
 /**
@@ -68,7 +68,7 @@ export interface PhysicsConfig {
   static?: boolean;
   bounce?: number;
   friction?: number;
-  [key: string]: unknown;
+  metadata?: Record<string, unknown>;
 }
 
 /**
@@ -78,7 +78,7 @@ export interface ScoringConfig {
   type: ScoringType;
   increment?: number;
   target?: string;
-  [key: string]: unknown;
+  metadata?: Record<string, unknown>;
 }
 
 /**
@@ -88,7 +88,7 @@ export interface UIConfig {
   hud?: string[];
   startScreen?: boolean;
   gameOverScreen?: boolean;
-  [key: string]: unknown;
+  metadata?: Record<string, unknown>;
 }
 
 /**

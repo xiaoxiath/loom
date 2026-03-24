@@ -4,23 +4,40 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is the **Loom** AI Game Platform - a design and specification repository for a system that generates playable small games from natural language descriptions. The repository currently contains design documents and technical specifications; no implementation code exists yet.
+This is the **Loom** AI Game Platform - a monorepo containing both design specifications and working implementation code for a system that generates playable small games from natural language descriptions.
 
-**Core Goal**: Natural Language → Playable Game
+**Core Goal**: Natural Language -> Playable Game
 
-The platform enables users to describe games in plain language (e.g., "Create a Flappy Bird-style game with space theme") and automatically generates runnable games with source code, assets, editing capabilities, and sharing features.
+The platform enables users to describe games in plain language (e.g., "Create a Flappy Bird-style game with space theme") and automatically generates runnable Phaser.js games with source code, assets, editing capabilities, and sharing features.
+
+**Current State**: The project has ~7,600+ lines of TypeScript code across 12 packages, with core pipeline stages (Planner, Runtime Adapter, Code Generator, Intent Parser, Orchestrator) implemented and passing 72+ tests. A Next.js web frontend exists in `apps/web`.
 
 ## Repository Structure
 
-All documentation is in the `docs/` directory:
+```
+loom/
+├── packages/
+│   ├── core/              # Core TypeScript types (GameSpec, Graphs, Components, Adapters)
+│   ├── schemas/           # JSON Schema definitions and validation
+│   ├── planner/           # GameSpec -> Execution Graphs (SceneGraph, EntityGraph, etc.)
+│   ├── runtime-adapter/   # Maps components to Phaser.js APIs (6 adapters)
+│   ├── code-generator/    # Generates Phaser.js game code (template + patch)
+│   ├── orchestrator/      # End-to-end pipeline orchestration
+│   ├── llm-client/        # Unified LLM client (OpenAI, Claude)
+│   ├── intent-parser/     # Natural language -> GameSpec (with repair engine)
+│   ├── code-review/       # AI-powered code review agent
+│   ├── asset-resolver/    # Asset resolution with placeholder SVGs
+│   ├── harness/           # E2E evaluation framework and golden tests
+│   └── (no runtime-orchestrator package yet)
+├── apps/
+│   └── web/               # Next.js web frontend
+├── schemas/               # Shared JSON Schema files
+├── examples/              # Example GameSpec JSON files (3 examples)
+├── docs/                  # Design specification documents (11 specs)
+└── assets/                # Static assets
+```
 
-- `ai_game_platform_prd_tdd.md` - Master PRD and TDD document defining the complete platform vision
-- `gamespec_dsl_v_1_spec.md` - GameSpec DSL specification (core protocol layer)
-- `gamespec_component_spec_v_1.md` - Component specification (behavior layer)
-- `intent_parser_agent_v_1_spec.md` - Intent Parser Agent specification
-- `planner_agent_v_1_spec.md` - Planner Agent specification
-- `runtime_adapter_layer_v_1_spec.md` - Runtime Adapter layer specification
-- `game_builder_runtime_orchestrator_v_1_spec.md` - Runtime Orchestrator specification
+**Note**: There is no `apps/api` directory or Fastify backend yet. The backend is planned for a future phase.
 
 ## Architecture Overview
 
@@ -28,143 +45,137 @@ The system uses a multi-stage pipeline architecture with AI agents:
 
 ```
 Natural Language
-↓
-Intent Parser Agent → GameSpec DSL
-↓
-Planner Agent → SceneGraph + EntityGraph + ComponentGraph
-↓
-Component Resolver → Component Bindings
-↓
-Runtime Adapter Layer → Engine-Specific Code
-↓
-Code Generator → Phaser.js Game
-↓
+  |
+Intent Parser Agent -> GameSpec DSL
+  |
+Planner Agent -> SceneGraph + EntityGraph + ComponentGraph + SystemGraph
+  |
+Runtime Adapter Layer -> Phaser API Bindings
+  |
+Code Generator -> Phaser.js Game Code
+  |
 Playable Game
 ```
 
-### Core Components
+### Core Packages
 
-**1. Intent Parser Agent**
-- Converts natural language to structured GameSpec DSL
-- Uses JSON Schema constrained decoding for stable generation
-- Performs semantic validation and repair
-- Auto-completes missing fields with sensible defaults
-- Outputs confidence scores and diagnostics
+**1. @loom/core** - Core type definitions
+- `gamespec.ts` - GameSpec DSL types (GameMeta, Entity, SceneConfig, etc.)
+- `graphs.ts` - Execution graph types (SceneGraph, EntityGraph, ComponentGraph, SystemGraph)
+- `components.ts` - 18 component interfaces + ComponentRegistry + ComponentEvents
+- `adapters.ts` - RuntimeAdapter, AdapterRegistry, AdapterBinding types
 
-**2. GameSpec DSL**
-The central data format that serves as:
-- Output from Intent Parser
-- Input to Planner
-- Editable intermediate format
-- Version control artifact
+**2. @loom/planner** - Compiles GameSpec to execution graphs
+- 5-stage planning pipeline with auto-completion and dependency resolution
+- Generates SceneGraph, EntityGraph, ComponentGraph, SystemGraph
+- 11 passing tests
 
-Key sections: `meta`, `settings`, `scene`, `entities`, `systems`, `mechanics`, `scoring`, `ui`, `assets`, `extensions`
+**3. @loom/runtime-adapter** - Maps components to Phaser.js APIs
+- 6 adapters: Jump, Gravity, Collision, KeyboardInput, Health, DestroyOnCollision
+- AdapterRegistry with engine-specific resolution
 
-**3. Planner Agent**
-- Compiles GameSpec to execution graphs
-- Generates: SceneGraph, EntityGraph, ComponentGraph, SystemGraph
-- Applies inference rules to auto-complete structure
-- Supports incremental updates (only recompute changed nodes)
+**4. @loom/code-generator** - Generates Phaser.js code
+- 8-stage generation pipeline
+- Template + Patch strategy for stable output
 
-**4. Component System**
-- Defines entity behaviors as composable, parameterized components
-- Categories: Movement, Physics, Combat, Input, Interaction, Lifecycle, AI
-- Components declare dependencies (e.g., `jump` requires `gravity`)
-- Components support event bindings (onStart, onUpdate, onCollision, onDestroy)
+**5. @loom/intent-parser** - Natural language to GameSpec
+- LLM-based parsing with JSON Schema constrained decoding
+- Repair engine for validation and auto-fix
+- 41 passing tests
 
-**5. Runtime Adapter Layer**
-- Maps platform-agnostic components to specific game engine APIs
-- Initially targets Phaser.js, designed to support multiple engines (Godot, Unity, Three.js)
-- Handles lifecycle bindings, input mapping, physics, collision, animation, events
-- Uses adapter registry pattern for extensibility
+**6. @loom/orchestrator** - End-to-end pipeline
+- Orchestrates all stages from input to generated game
+- Configurable stages (LLM, asset resolution, code review)
 
-**6. Runtime Orchestrator**
-- Central execution scheduler managing the entire pipeline
-- Handles task scheduling, state management, caching, error recovery
-- Supports incremental rebuilds and interactive editing
-- Manages session lifecycle and versioning
+**7. @loom/llm-client** - Unified LLM interface
+- Supports OpenAI and Claude providers
+- Factory pattern with env-based configuration
+- 12 passing tests
+
+**8. @loom/harness** - Evaluation framework
+- 4-dimension code quality scoring
+- Golden test suite with 3 example games
+- Baseline comparison and regression detection
 
 ## Key Concepts
 
 ### GameSpec DSL Structure
 ```json
 {
-  "meta": { "title", "genre", "camera", "dimension" },
-  "settings": { "gravity", "worldBounds", "backgroundColor" },
-  "scene": { "type", "cameraFollow", "spawn" },
-  "entities": [{ "id", "type", "sprite", "components" }],
+  "meta": { "title": "...", "genre": "runner", "camera": "side", "dimension": "2D", "version": "1.0" },
+  "settings": { "gravity": 980, "backgroundColor": "#87CEEB", "worldWidth": 800, "worldHeight": 600 },
+  "scene": { "type": "single", "cameraFollow": "player", "spawn": { "x": 100, "y": 300 } },
+  "entities": [{ "id": "player", "type": "player", "sprite": "bird", "components": ["jump", "gravity"] }],
   "systems": ["physics", "collision", "input"],
-  "mechanics": ["jump", "shoot", "collect"],
-  "scoring": { "type", "increment" },
-  "ui": { "hud", "startScreen", "gameOverScreen" },
-  "assets": [{ "id", "type", "source" }],
+  "mechanics": ["jump", "avoid"],
+  "scoring": { "type": "distance", "increment": 1 },
+  "ui": { "hud": ["score"], "startScreen": true, "gameOverScreen": true },
+  "assets": [{ "id": "bird", "type": "sprite", "source": "kenney" }],
   "extensions": {}
 }
 ```
 
-### Component Structure
-```json
-{
-  "type": "jump",
-  "enabled": true,
-  "config": { "force": 320, "cooldown": 200 },
-  "dependencies": ["gravity"],
-  "events": { "onStart": [], "onCollision": [] }
-}
-```
-
 ### Execution Flow
-1. **Prompt Intake** → Normalize user input
-2. **Intent Parsing** → Generate GameSpec with JSON Schema constraints
-3. **Spec Validation** → Validate against schema and semantic rules
-4. **Planning** → Build execution graphs from GameSpec
-5. **Component Resolution** → Resolve component dependencies
-6. **Adapter Binding** → Map components to Phaser APIs
-7. **Code Generation** → Generate Phaser scene code via template patching
-8. **Asset Resolution** → Load from cache, asset library, or AI generate
-9. **Preview Runtime** → Boot Phaser runtime and display playable game
+1. **Prompt Intake** - Normalize user input
+2. **Intent Parsing** - Generate GameSpec with JSON Schema constraints
+3. **Spec Validation** - Validate against schema and semantic rules
+4. **Planning** - Build execution graphs from GameSpec
+5. **Component Resolution** - Resolve component dependencies
+6. **Adapter Binding** - Map components to Phaser APIs
+7. **Code Generation** - Generate Phaser scene code via template patching
+8. **Asset Resolution** - Load from cache, asset library, or use placeholders
+9. **Preview Runtime** - Boot Phaser runtime and display playable game
+
+## Common Development Commands
+
+```bash
+# Install dependencies
+pnpm install
+
+# Build all packages
+pnpm build
+
+# Run all tests
+pnpm test
+
+# Run specific package tests
+pnpm --filter @loom/planner test
+pnpm --filter @loom/intent-parser test
+
+# Type checking
+pnpm typecheck
+
+# Run E2E golden tests
+pnpm --filter @loom/harness eval
+
+# Start web dev server
+cd apps/web && pnpm dev
+```
 
 ## Design Principles
 
-1. **Structure-First Generation**: Use constrained decoding (JSON Schema) instead of free-form code generation to ensure stability
-2. **Intermediate Representation**: GameSpec DSL serves as the stable intermediate format between parsing and code generation
-3. **Template + Patch**: Generate code by patching existing templates rather than generating from scratch
-4. **Incremental Updates**: Support partial rebuilds when users edit games
+1. **Structure-First Generation**: Use constrained decoding (JSON Schema) instead of free-form code generation
+2. **Intermediate Representation**: GameSpec DSL is the stable contract between parsing and code generation
+3. **Template + Patch**: Generate code by patching existing templates, not generating from scratch
+4. **Incremental Updates**: Graph-based structure enables partial rebuilds
 5. **Component Composition**: Build complex behaviors from composable, parameterized components
-6. **Engine Agnostic**: Design component system to potentially support multiple game engines
+6. **Engine Agnostic**: Component system designed to support multiple engines (currently Phaser.js)
 
-## Target Technology Stack
+## Technology Stack
 
-**Frontend**: React, Tailwind, Zustand, React Flow
-**Backend**: Node.js/Bun, Fastify
-**Game Engine**: Phaser.js
-**Database**: PostgreSQL (via Supabase)
-**Deployment**: Frontend (Vercel), Backend (Fly.io/Railway)
-
-## MVP Scope
-
-First iteration supports:
-- Single scene games
-- Single player character
-- Basic enemies and obstacles
-- Simple collision detection
-- Basic scoring systems
-- Game types: Jumpers, Dodgers, Shooters, Runners
+**Frontend**: Next.js, React, Tailwind CSS
+**Game Engine**: Phaser.js 3
+**Language**: TypeScript (strict mode)
+**Monorepo**: pnpm workspaces + Turborepo
+**Testing**: Vitest
+**AI/LLM**: OpenAI GPT-4o, Claude 3.5 Sonnet
 
 ## When Working with This Repository
 
-- This is a **specification repository**, not an implementation
-- All documents are written in Chinese with technical terms in English
-- The specs define a sophisticated multi-agent system with clear separation of concerns
-- Focus is on achieving stable, reliable generation through constrained intermediate formats
-- The GameSpec DSL is the core contract that all components must understand
+- This is a **working implementation** with 12 packages and 72+ passing tests
+- All design specs are in `docs/` - they guide the implementation
+- The GameSpec DSL (defined in `@loom/core`) is the core contract all components must understand
+- JSON Schema files in `schemas/` define the formal validation rules
+- Examples in `examples/` and `packages/harness/data/golden-specs/` are validated test fixtures
+- No backend API exists yet - the pipeline runs in-process or via the web frontend
 - Component-based architecture enables composability and extensibility
-- The system prioritizes stability over flexibility in the MVP phase
-
-## Key Design Challenges Addressed
-
-1. **LLM Generation Stability**: Addressed through JSON Schema constrained decoding and intermediate GameSpec DSL
-2. **Code Quality**: Template-based generation with patches, not full code generation
-3. **Incremental Editing**: Graph-based structure enables partial rebuilds
-4. **Multi-Engine Support**: Runtime Adapter abstraction layer
-5. **Behavior Complexity**: Component system with dependencies and composition

@@ -85,6 +85,15 @@ export class OpenAIClient implements LLMClient {
         );
       }
 
+      // H-15: Handle content_filter finish_reason
+      if (choice.finish_reason === 'content_filter') {
+        throw new LLMError(
+          LLMErrorType.CONTENT_FILTERED,
+          'Response was blocked by OpenAI content filter. '
+            + 'The prompt or generated content may have triggered safety policies.'
+        );
+      }
+
       return {
         content: choice.message.content || '',
         provider: 'openai',

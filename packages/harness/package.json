@@ -23,7 +23,9 @@
   "dependencies": {
     "@loom/core": "workspace:*",
     "@loom/orchestrator": "workspace:*",
-    "@loom/code-generator": "workspace:*"
+    "@loom/code-generator": "workspace:*",
+    "ajv": "^8.12.0",
+    "ajv-formats": "^2.1.1"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",

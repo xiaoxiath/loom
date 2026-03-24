@@ -3,13 +3,18 @@
     "title": "Galactic Shooter",
     "genre": "shooter",
     "camera": "topdown",
-    "dimension": "2d"
+    "dimension": "2D",
+    "version": "1.0"
   },
   "settings": {
-    "width": 800,
-    "height": 600,
+    "gravity": 0,
     "backgroundColor": "#0a0a1a",
-    "gravity": { "x": 0, "y": 0 }
+    "worldWidth": 800,
+    "worldHeight": 600
+  },
+  "scene": {
+    "type": "single",
+    "cameraFollow": "player"
   },
   "entities": [
     {
@@ -20,7 +25,7 @@
       "physics": {
         "collidable": true
       },
-      "components": ["run", "shoot", "keyboardInput"]
+      "components": ["shoot", "keyboardInput"]
     },
     {
       "id": "enemy",
@@ -53,17 +58,17 @@
       "components": []
     }
   ],
-  "systems": ["physics", "input", "ai"],
-  "mechanics": ["shoot", "dodge", "collect"],
+  "systems": ["physics", "input", "collision", "ai"],
+  "mechanics": ["shoot", "avoid", "collect"],
   "scoring": {
-    "type": "collect",
-    "increment": 100
+    "type": "kill",
+    "increment": 100,
+    "target": "enemy"
   },
   "ui": {
-    "hud": {
-      "score": true,
-      "health": true
-    }
+    "hud": ["score", "health"],
+    "startScreen": true,
+    "gameOverScreen": true
   },
   "assets": [
     {
@@ -86,5 +91,6 @@
       "type": "sprite",
       "source": "placeholder"
     }
-  ]
+  ],
+  "extensions": {}
 }

@@ -3,6 +3,7 @@
  */
 
 import type { GameSpec } from '@loom/core';
+import type { RepairRule } from './repair-engine';
 
 /**
  * User prompt input
@@ -50,6 +51,8 @@ export interface IntentParserConfig {
   useExamples?: boolean;
   maxRetries?: number;
   validateOutput?: boolean;
+  /** Custom repair rules. When provided and non-empty, replaces built-in rules. */
+  customRepairRules?: RepairRule[];
 }
 
 /**

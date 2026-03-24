@@ -24,7 +24,7 @@ export class CodeReviewAgent {
   /**
    * Review generated code
    */
-  async review(sceneFile: GeneratedFile, gameSpec: GameSpec): Promise<ReviewResult> {
+  async review(sceneFile: GeneratedFile, gameSpec: GameSpec, round = 0): Promise<ReviewResult> {
     const messages: ChatMessage[] = [
       { role: 'system', content: REVIEW_SYSTEM_PROMPT },
       {
@@ -43,7 +43,7 @@ export class CodeReviewAgent {
 
     // If there are error-level issues and autoFix is enabled
     if (this.autoFix && result.issues.some(i => i.severity === 'error')) {
-      return this.fixAndReReview(sceneFile, gameSpec, result, 0);
+      return this.fixAndReReview(sceneFile, gameSpec, result, round);
     }
 
     return result;
@@ -53,7 +53,7 @@ export class CodeReviewAgent {
    * Fix and re-review (recursive, max maxFixRounds rounds)
    */
   private async fixAndReReview(
-    originalFile: GeneratedFile,
+    currentFile: GeneratedFile,
     gameSpec: GameSpec,
     previousReview: ReviewResult,
     round: number
@@ -62,7 +62,9 @@ export class CodeReviewAgent {
       return previousReview; // Max rounds reached, return last review
     }
 
-    // Let LLM fix the code
+    // C-02 FIX: Use currentFile.content (which carries the latest code) instead
+    // of always using the original. On the first call this is the original; on
+    // subsequent calls it is the previously-fixed version.
     const fixResponse = await this.llmClient.chat(
       [
         {
@@ -73,7 +75,7 @@ export class CodeReviewAgent {
         },
         {
           role: 'user',
-          content: `## Current Code\n\`\`\`typescript\n${originalFile.content}\n\`\`\`\n\n`
+          content: `## Current Code\n\`\`\`typescript\n${currentFile.content}\n\`\`\`\n\n`
             + `## Issues Found\n${JSON.stringify(previousReview.issues, null, 2)}\n\n`
             + 'Fix all error-level issues. Output the complete fixed code.',
         },
@@ -85,11 +87,13 @@ export class CodeReviewAgent {
 
     // Re-review the fixed code
     const fixedFile: GeneratedFile = {
-      ...originalFile,
+      ...currentFile,
       content: fixedCode,
     };
 
-    const reReview = await this.review(fixedFile, gameSpec);
+    // C-01 FIX: Pass round + 1 so the counter is correctly incremented across
+    // the review → fixAndReReview → review call chain.
+    const reReview = await this.review(fixedFile, gameSpec, round + 1);
     reReview.fixedCode = fixedCode;
 
     return reReview;

@@ -18,7 +18,7 @@ import {
   formatFewShotExamples,
 } from './prompts/examples';
 import { normalizePrompt, type NormalizedPrompt } from './normalizer';
-import { repairSpec, type RepairRule } from './repair-engine';
+import { repairSpec, REPAIR_RULES, type RepairRule } from './repair-engine';
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
 import gamespecSchema from '../../../schemas/gamespec.schema.json';
@@ -31,13 +31,19 @@ import gamespecSchema from '../../../schemas/gamespec.schema.json';
 export class IntentParserAgent {
   private llmClient: LLMClient;
   private useExamples: boolean;
-  private customRepairRules: RepairRule[];
+  private repairRules: RepairRule[];
   private schemaValidator: ReturnType<Ajv['compile']>;
 
   constructor(config: IntentParserConfig) {
     this.llmClient = config.llmClient;
     this.useExamples = config.useExamples ?? true;
-    this.customRepairRules = [];
+
+    // H-03: When customRepairRules is an empty array, fall back to built-in rules
+    // instead of silently disabling all repairs.
+    this.repairRules =
+      (config.customRepairRules && config.customRepairRules.length > 0)
+        ? config.customRepairRules
+        : REPAIR_RULES;
 
     // Initialize JSON Schema validator
     const ajv = new Ajv({ allErrors: true });
@@ -49,7 +55,7 @@ export class IntentParserAgent {
    * Add custom repair rule
    */
   addRepairRule(rule: RepairRule): void {
-    this.customRepairRules.push(rule);
+    this.repairRules.push(rule);
   }
 
   /**
@@ -61,7 +67,7 @@ export class IntentParserAgent {
     // Stage 1: Normalize prompt
     const normalizedPrompt = normalizePrompt(prompt.text);
 
-    // Stage 2: Build messages for LLM
+    // Stage 2: Build messages for LLM (H-02: now passes full NormalizedPrompt)
     const messages = this.buildMessages(normalizedPrompt);
 
     // Stage 3: Call LLM with JSON mode
@@ -71,7 +77,7 @@ export class IntentParserAgent {
     let spec = this.parseResponse(response.content);
 
     // Stage 5: Semantic repair
-    const { spec: repairedSpec, repairs } = repairSpec(spec, this.customRepairRules);
+    const { spec: repairedSpec, repairs } = repairSpec(spec, this.repairRules);
     spec = repairedSpec;
 
     // Stage 6: Validate spec
@@ -111,6 +117,9 @@ export class IntentParserAgent {
 
   /**
    * Build messages array for LLM
+   *
+   * H-02: Injects normalizer analysis results (detectedGameType, detectedStyle,
+   * keywords, locale) into the LLM prompt so the model can leverage them.
    */
   private buildMessages(prompt: NormalizedPrompt): ChatMessage[] {
     const messages: ChatMessage[] = [];
@@ -129,10 +138,31 @@ export class IntentParserAgent {
       content: systemContent,
     });
 
-    // User message - use normalized prompt
+    // User message — include normalizer analysis alongside the normalized text
+    let userContent = prompt.normalized;
+
+    const hints: string[] = [];
+    if (prompt.gameType) {
+      hints.push(`Detected game type: ${prompt.gameType}`);
+    }
+    if (prompt.style) {
+      hints.push(`Detected visual style: ${prompt.style}`);
+    }
+    if (prompt.keywords.length > 0) {
+      hints.push(`Keywords: ${prompt.keywords.join(', ')}`);
+    }
+    if (prompt.locale && prompt.locale !== 'en') {
+      hints.push(`Locale: ${prompt.locale}`);
+    }
+
+    if (hints.length > 0) {
+      userContent += '\n\n---\nAnalysis hints (use these to improve accuracy):\n';
+      userContent += hints.map(h => `- ${h}`).join('\n');
+    }
+
     messages.push({
       role: 'user',
-      content: prompt.normalized,
+      content: userContent,
     });
 
     return messages;

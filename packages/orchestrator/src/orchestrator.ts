@@ -27,6 +27,66 @@ import type {
 } from './types';
 
 /**
+ * Validate that a value looks like a valid GameSpec at runtime.
+ * Checks that all required top-level fields exist and have sensible types.
+ *
+ * Q-10: Replaces unsafe `as GameSpec` cast with runtime verification.
+ * H-11: Provides inter-stage schema validation.
+ */
+function assertGameSpec(value: unknown): asserts value is GameSpec {
+  if (typeof value !== 'object' || value === null) {
+    throw new Error('GameSpec validation failed: value is not an object');
+  }
+
+  const obj = value as Record<string, unknown>;
+  const requiredFields: Array<{ key: string; type: string }> = [
+    { key: 'meta', type: 'object' },
+    { key: 'settings', type: 'object' },
+    { key: 'scene', type: 'object' },
+    { key: 'entities', type: 'object' },   // Array.isArray checked below
+    { key: 'systems', type: 'object' },     // array
+    { key: 'mechanics', type: 'object' },   // array
+  ];
+
+  const errors: string[] = [];
+
+  for (const { key, type } of requiredFields) {
+    if (!(key in obj)) {
+      errors.push(`Missing required field "${key}"`);
+    } else if (typeof obj[key] !== type) {
+      errors.push(`Field "${key}" must be of type ${type}, got ${typeof obj[key]}`);
+    }
+  }
+
+  if ('entities' in obj && !Array.isArray(obj.entities)) {
+    errors.push('Field "entities" must be an array');
+  }
+  if ('systems' in obj && !Array.isArray(obj.systems)) {
+    errors.push('Field "systems" must be an array');
+  }
+  if ('mechanics' in obj && !Array.isArray(obj.mechanics)) {
+    errors.push('Field "mechanics" must be an array');
+  }
+
+  // Validate meta sub-fields
+  if (typeof obj.meta === 'object' && obj.meta !== null) {
+    const meta = obj.meta as Record<string, unknown>;
+    if (typeof meta.title !== 'string' || meta.title.length === 0) {
+      errors.push('Field "meta.title" must be a non-empty string');
+    }
+    if (typeof meta.genre !== 'string') {
+      errors.push('Field "meta.genre" must be a string');
+    }
+  }
+
+  if (errors.length > 0) {
+    throw new Error(
+      `GameSpec validation failed:\n  - ${errors.join('\n  - ')}`
+    );
+  }
+}
+
+/**
  * Orchestrator
  *
  * Central coordinator for the entire game generation pipeline
@@ -61,7 +121,10 @@ export class Orchestrator {
     // ── Stage 1: Intent Parsing ──
     if (input.prompt && this.intentParser && this.config.enableIntentParser) {
       intentResult = await this.intentParser.parse({ text: input.prompt });
-      gameSpec = intentResult.spec as GameSpec;
+
+      // Q-10: Runtime validation instead of bare `as GameSpec` cast
+      assertGameSpec(intentResult.spec);
+      gameSpec = intentResult.spec;
     } else if (input.gameSpec) {
       gameSpec = input.gameSpec;
     } else {
@@ -69,6 +132,9 @@ export class Orchestrator {
         'Either prompt (with IntentParser configured) or gameSpec must be provided'
       );
     }
+
+    // H-11: Validate GameSpec before passing to planner
+    assertGameSpec(gameSpec);
 
     // ── Stage 2: Planning ──
     const planStart = Date.now();
@@ -79,6 +145,14 @@ export class Orchestrator {
     const planner = createPlanner(plannerConfig);
     const planResult = await planner.plan(gameSpec);
     const planTime = Date.now() - planStart;
+
+    // H-11: Validate planner output has required graph fields
+    if (!planResult.sceneGraph || !planResult.entityGraph || !planResult.componentGraph || !planResult.systemGraph) {
+      throw new Error(
+        'Planner output validation failed: missing one or more required graphs '
+          + '(sceneGraph, entityGraph, componentGraph, systemGraph)'
+      );
+    }
 
     // ── Stage 3: Asset Resolution (optional) ──
     const assetStart = Date.now();
@@ -123,7 +197,14 @@ export class Orchestrator {
     const codeOutput = await codeGenerator.generate(codeInput);
     const codeTime = Date.now() - codeStart;
 
+    // H-11: Validate code generator output
+    if (!codeOutput.files || !Array.isArray(codeOutput.files) || codeOutput.files.length === 0) {
+      throw new Error('Code generation validation failed: no files were generated');
+    }
+
     // ── Stage 6: Code Review (NEW) ──
+    // Q-09: Track code review time in diagnostics
+    const reviewStart = Date.now();
     let finalCodeOutput = codeOutput;
     let reviewResult;
 
@@ -133,32 +214,37 @@ export class Orchestrator {
         maxFixRounds: 2,
       });
 
-      const sceneFile = codeOutput.files.find(
-        f => f.path.includes('MainScene')
-      );
+      // H-12: Review ALL generated files, not just MainScene
+      const reviewedFiles = [...codeOutput.files];
 
-      if (sceneFile) {
-        reviewResult = await reviewer.review(sceneFile, gameSpec);
+      for (let i = 0; i < codeOutput.files.length; i++) {
+        const file = codeOutput.files[i]!;
+        const fileReview = await reviewer.review(file, gameSpec);
+
+        // Keep the last review result for diagnostics (or accumulate)
+        reviewResult = fileReview;
 
         // If there's fixed code, replace the original file
-        if (reviewResult.fixedCode) {
-          finalCodeOutput = {
-            ...codeOutput,
-            files: codeOutput.files.map(f =>
-              f.path === sceneFile.path
-                ? { ...f, content: reviewResult!.fixedCode! }
-                : f
-            ),
-          };
+        if (fileReview.fixedCode) {
+          reviewedFiles[i] = { ...file, content: fileReview.fixedCode };
         }
       }
+
+      finalCodeOutput = {
+        ...codeOutput,
+        files: reviewedFiles,
+      };
     }
+
+    // Q-09: Record code review elapsed time
+    const reviewTime = Date.now() - reviewStart;
 
     // ── Build Diagnostics ──
     const diagnostics: PipelineDiagnostics = {
       planningTimeMs: planTime,
       assetResolutionTimeMs: assetTime,
       codeGenerationTimeMs: codeTime,
+      codeReviewTimeMs: reviewTime,
       totalTimeMs: Date.now() - totalStart,
     };
 

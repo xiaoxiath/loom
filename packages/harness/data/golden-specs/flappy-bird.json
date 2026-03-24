@@ -2,14 +2,19 @@
   "meta": {
     "title": "Flappy Bird",
     "genre": "runner",
-    "camera": "side-scroll",
-    "dimension": "2d"
+    "camera": "side",
+    "dimension": "2D",
+    "version": "1.0"
   },
   "settings": {
-    "width": 800,
-    "height": 600,
+    "gravity": 800,
     "backgroundColor": "#87CEEB",
-    "gravity": { "x": 0, "y": 800 }
+    "worldWidth": 800,
+    "worldHeight": 600
+  },
+  "scene": {
+    "type": "single",
+    "cameraFollow": "player"
   },
   "entities": [
     {
@@ -45,16 +50,16 @@
       "components": []
     }
   ],
-  "systems": ["physics", "input"],
-  "mechanics": ["jump", "dodge"],
+  "systems": ["physics", "input", "collision"],
+  "mechanics": ["jump", "avoid"],
   "scoring": {
     "type": "distance",
     "increment": 1
   },
   "ui": {
-    "hud": {
-      "score": true
-    }
+    "hud": ["score"],
+    "startScreen": true,
+    "gameOverScreen": true
   },
   "assets": [
     {
@@ -72,5 +77,6 @@
       "type": "sprite",
       "source": "placeholder"
     }
-  ]
+  ],
+  "extensions": {}
 }

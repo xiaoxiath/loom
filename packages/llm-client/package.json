@@ -23,7 +23,6 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.0",
-    "@loom/core": "workspace:*",
     "openai": "^4.70.0"
   },
   "devDependencies": {

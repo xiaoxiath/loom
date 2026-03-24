@@ -23,7 +23,8 @@
       "Bash(curl -s http://localhost:3000/api/examples/flappy-bird)",
       "Bash(npx tsx:*)",
       "Bash(curl:*)",
-      "Bash(kill 98148)"
+      "Bash(kill 98148)",
+      "Bash(git apply:*)"
     ]
   }
 }

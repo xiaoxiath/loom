@@ -4,7 +4,7 @@
  * Creates LLM client instances based on configuration
  */
 
-import type { LLMClient, LLMConfig } from './types';
+import type { LLMClient, LLMConfig, LLMProvider } from './types';
 import { OpenAIClient } from './openai-client';
 import { ClaudeClient } from './claude-client';
 import { LLMError, LLMErrorType } from './types';
@@ -73,17 +73,31 @@ export function createLLMClientFromEnv(): LLMClient {
 }
 
 /**
+ * Options for creating a mock LLM client
+ */
+export interface MockLLMClientOptions {
+  /** The provider to report. Defaults to 'openai'. */
+  provider?: LLMProvider;
+  /** The model name to report. Defaults to 'mock-model'. */
+  model?: string;
+}
+
+/**
  * Create a mock LLM client for testing
  */
 export function createMockLLMClient(
-  responseContent: string = '{}'
+  responseContent: string = '{}',
+  options: MockLLMClientOptions = {}
 ): LLMClient {
+  const provider = options.provider ?? 'openai';
+  const model = options.model ?? 'mock-model';
+
   return {
     async chat() {
       return {
         content: responseContent,
-        provider: 'openai' as const,
-        model: 'mock-model',
+        provider,
+        model,
         usage: {
           promptTokens: 0,
           completionTokens: 0,
@@ -93,10 +107,10 @@ export function createMockLLMClient(
       };
     },
     getProvider() {
-      return 'openai' as const;
+      return provider;
     },
     getModel() {
-      return 'mock-model';
+      return model;
     },
     isConfigured() {
       return true;

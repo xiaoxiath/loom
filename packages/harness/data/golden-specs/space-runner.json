@@ -2,14 +2,19 @@
   "meta": {
     "title": "Space Runner",
     "genre": "runner",
-    "camera": "side-scroll",
-    "dimension": "2d"
+    "camera": "side",
+    "dimension": "2D",
+    "version": "1.0"
   },
   "settings": {
-    "width": 800,
-    "height": 600,
+    "gravity": 300,
     "backgroundColor": "#000011",
-    "gravity": { "x": 0, "y": 300 }
+    "worldWidth": 800,
+    "worldHeight": 600
+  },
+  "scene": {
+    "type": "single",
+    "cameraFollow": "player"
   },
   "entities": [
     {
@@ -20,7 +25,7 @@
       "physics": {
         "collidable": true
       },
-      "components": ["run", "jump", "keyboardInput"]
+      "components": ["jump", "keyboardInput"]
     },
     {
       "id": "asteroid",
@@ -43,16 +48,16 @@
       "components": []
     }
   ],
-  "systems": ["physics", "input", "ai"],
-  "mechanics": ["run", "jump", "collect", "dodge"],
+  "systems": ["physics", "input", "collision", "ai"],
+  "mechanics": ["jump", "collect", "avoid"],
   "scoring": {
     "type": "collect",
     "increment": 10
   },
   "ui": {
-    "hud": {
-      "score": true
-    }
+    "hud": ["score"],
+    "startScreen": true,
+    "gameOverScreen": true
   },
   "assets": [
     {
@@ -70,5 +75,6 @@
       "type": "sprite",
       "source": "placeholder"
     }
-  ]
+  ],
+  "extensions": {}
 }

@@ -19,8 +19,8 @@ export async function POST(request: NextRequest) {
   const tempDir = path.join(os.tmpdir(), `loom-game-${Date.now()}`);
 
   try {
-    const body = await request.json();
-    const { gameSpec } = body as { gameSpec: GameSpec };
+    const body = (await request.json()) as { gameSpec?: GameSpec };
+    const { gameSpec } = body;
 
     if (!gameSpec) {
       return NextResponse.json(
@@ -107,24 +107,35 @@ export async function POST(request: NextRequest) {
 
     const bundleContent = bundleFile.text;
 
-    // 7. Return bundled code
+    // 7. Extract diagnostics from the code generation output
+    const codeGenDiagnostics = result.codeOutput.diagnostics;
+
+    // 8. Return bundled code
     return NextResponse.json({
       success: true,
       files: [
         {
           path: 'bundle.js',
           content: bundleContent,
-          type: 'bundle',
+          type: 'config' as const,
         },
         ...result.codeOutput.files.map((f) => ({
-          ...f,
-          type: f.type === 'scene' ? 'scene' : 'source',
+          path: f.path,
+          content: f.content,
+          type: f.type,
         })),
       ],
       diagnostics: {
-        ...result.diagnostics,
-        bundleMethod: 'esbuild',
+        warnings: codeGenDiagnostics.warnings,
+        errors: codeGenDiagnostics.errors,
+        generatedFiles: codeGenDiagnostics.generatedFiles,
+        skippedFiles: codeGenDiagnostics.skippedFiles,
+        generationMethod: codeGenDiagnostics.generationMethod,
+        llmLatencyMs: codeGenDiagnostics.llmLatencyMs,
+        llmTokenUsage: codeGenDiagnostics.llmTokenUsage,
+        bundleMethod: 'esbuild' as const,
         bundleSize: bundleContent.length,
+        pipelineTimeMs: result.diagnostics.totalTimeMs,
       },
     });
   } catch (error) {
@@ -134,12 +145,11 @@ export async function POST(request: NextRequest) {
       {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : undefined,
       },
       { status: 500 }
     );
   } finally {
-    // 8. Clean up temporary directory
+    // 9. Clean up temporary directory
     try {
       await fs.rm(tempDir, { recursive: true, force: true });
     } catch (cleanupError) {

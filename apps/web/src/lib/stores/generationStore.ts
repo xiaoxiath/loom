@@ -3,7 +3,7 @@ import { create } from 'zustand';
 interface GeneratedFile {
   path: string;
   content: string;
-  type: 'scene' | 'entity' | 'system' | 'config' | 'asset' | 'html' | 'package';
+  type: 'scene' | 'entity' | 'system' | 'config' | 'asset' | 'html' | 'package' | 'bundle';
 }
 
 interface PipelineDiagnostics {

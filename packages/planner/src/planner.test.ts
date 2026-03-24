@@ -9,7 +9,7 @@ describe('PlannerAgent', () => {
   });
 
   describe('plan()', () => {
-    it('should generate graphs from minimal GameSpec', () => {
+    it('should generate graphs from minimal GameSpec', async () => {
       const spec: GameSpec = {
         meta: {
           title: 'Test Game',
@@ -42,7 +42,7 @@ describe('PlannerAgent', () => {
         extensions: {},
       };
 
-      const result = planner.plan(spec);
+      const result = await planner.plan(spec);
 
       expect(result).toBeDefined();
       expect(result.sceneGraph).toBeDefined();
@@ -52,7 +52,7 @@ describe('PlannerAgent', () => {
       expect(result.diagnostics).toBeDefined();
     });
 
-    it('should throw error if no player entity', () => {
+    it('should throw error if no player entity', async () => {
       const spec = {
         meta: {
           title: 'Test',
@@ -79,10 +79,10 @@ describe('PlannerAgent', () => {
         extensions: {},
       } as GameSpec;
 
-      expect(() => planner.plan(spec)).toThrow('must have at least one player entity');
+      await expect(planner.plan(spec)).rejects.toThrow('must have at least one player entity');
     });
 
-    it('should throw error on duplicate entity IDs', () => {
+    it('should throw error on duplicate entity IDs', async () => {
       const spec = {
         meta: {
           title: 'Test',
@@ -115,12 +115,12 @@ describe('PlannerAgent', () => {
         extensions: {},
       } as GameSpec;
 
-      expect(() => planner.plan(spec)).toThrow('Duplicate entity IDs');
+      await expect(planner.plan(spec)).rejects.toThrow('Duplicate entity IDs');
     });
   });
 
   describe('SceneGraph generation', () => {
-    it('should create scene with correct entities', () => {
+    it('should create scene with correct entities', async () => {
       const spec: GameSpec = {
         meta: {
           title: 'Test',
@@ -153,7 +153,7 @@ describe('PlannerAgent', () => {
         extensions: {},
       };
 
-      const result = planner.plan(spec);
+      const result = await planner.plan(spec);
 
       expect(result.sceneGraph.scenes).toHaveLength(1);
       expect(result.sceneGraph.scenes[0]!.id).toBe('main');
@@ -161,7 +161,7 @@ describe('PlannerAgent', () => {
       expect(result.sceneGraph.scenes[0]!.entities).toContain('enemy1');
     });
 
-    it('should set camera to follow player', () => {
+    it('should set camera to follow player', async () => {
       const spec: GameSpec = {
         meta: {
           title: 'Test',
@@ -188,14 +188,14 @@ describe('PlannerAgent', () => {
         extensions: {},
       };
 
-      const result = planner.plan(spec);
+      const result = await planner.plan(spec);
 
       expect(result.sceneGraph.camera.follow).toBe('player');
     });
   });
 
   describe('EntityGraph generation', () => {
-    it('should create entity nodes', () => {
+    it('should create entity nodes', async () => {
       const spec: GameSpec = {
         meta: {
           title: 'Test',
@@ -223,7 +223,7 @@ describe('PlannerAgent', () => {
         extensions: {},
       };
 
-      const result = planner.plan(spec);
+      const result = await planner.plan(spec);
 
       expect(result.entityGraph.nodes).toHaveLength(1);
       expect(result.entityGraph.nodes[0]!.id).toBe('player');
@@ -232,7 +232,7 @@ describe('PlannerAgent', () => {
   });
 
   describe('ComponentGraph generation', () => {
-    it('should map components to entities', () => {
+    it('should map components to entities', async () => {
       const spec: GameSpec = {
         meta: {
           title: 'Test',
@@ -259,7 +259,7 @@ describe('PlannerAgent', () => {
         extensions: {},
       };
 
-      const result = planner.plan(spec);
+      const result = await planner.plan(spec);
 
       expect(result.componentGraph.entityComponents['player']).toBeDefined();
       expect(result.componentGraph.entityComponents['player']).toContain('jump');
@@ -269,7 +269,7 @@ describe('PlannerAgent', () => {
   });
 
   describe('SystemGraph generation', () => {
-    it('should include physics when gravity is set', () => {
+    it('should include physics when gravity is set', async () => {
       const spec: GameSpec = {
         meta: {
           title: 'Test',
@@ -296,7 +296,7 @@ describe('PlannerAgent', () => {
         extensions: {},
       };
 
-      const result = planner.plan(spec);
+      const result = await planner.plan(spec);
 
       const physicsSystem = result.systemGraph.systems.find(
         (s) => s.type === 'physics'
@@ -305,7 +305,7 @@ describe('PlannerAgent', () => {
       expect(physicsSystem?.enabled).toBe(true);
     });
 
-    it('should include collision when entities are collidable', () => {
+    it('should include collision when entities are collidable', async () => {
       const spec: GameSpec = {
         meta: {
           title: 'Test',
@@ -333,7 +333,7 @@ describe('PlannerAgent', () => {
         extensions: {},
       };
 
-      const result = planner.plan(spec);
+      const result = await planner.plan(spec);
 
       const collisionSystem = result.systemGraph.systems.find(
         (s) => s.type === 'collision'
@@ -343,7 +343,7 @@ describe('PlannerAgent', () => {
   });
 
   describe('Auto-completion', () => {
-    it('should auto-complete player position', () => {
+    it('should auto-complete player position', async () => {
       const spec: GameSpec = {
         meta: {
           title: 'Test',
@@ -370,14 +370,14 @@ describe('PlannerAgent', () => {
         extensions: {},
       };
 
-      const result = planner.plan(spec);
+      const result = await planner.plan(spec);
 
       expect(result.diagnostics.autoFixes).toContainEqual(
         expect.stringContaining('default position')
       );
     });
 
-    it('should infer components from mechanics', () => {
+    it('should infer components from mechanics', async () => {
       const spec: GameSpec = {
         meta: {
           title: 'Test',
@@ -404,7 +404,7 @@ describe('PlannerAgent', () => {
         extensions: {},
       };
 
-      const result = planner.plan(spec);
+      const result = await planner.plan(spec);
 
       expect(result.componentGraph.entityComponents['player']).toContain('jump');
       expect(result.componentGraph.entityComponents['player']).toContain('shoot');

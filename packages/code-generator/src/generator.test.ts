@@ -13,7 +13,7 @@ describe('CodeGenerator', () => {
   });
 
   describe('generate()', () => {
-    it('should generate basic Phaser project files', () => {
+    it('should generate basic Phaser project files', async () => {
       const input: CodeGeneratorInput = {
         gameSpec: {
           meta: {
@@ -80,7 +80,7 @@ describe('CodeGenerator', () => {
         adapterBindings: [],
       };
 
-      const output = generator.generate(input);
+      const output = await generator.generate(input);
 
       // Check that files were generated
       expect(output.files.length).toBeGreaterThan(0);
@@ -98,7 +98,7 @@ describe('CodeGenerator', () => {
       expect(output.dependencies).toHaveProperty('phaser');
     });
 
-    it('should generate package.json with correct game name', () => {
+    it('should generate package.json with correct game name', async () => {
       const input: CodeGeneratorInput = {
         gameSpec: {
           meta: {
@@ -137,7 +137,7 @@ describe('CodeGenerator', () => {
         adapterBindings: [],
       };
 
-      const output = generator.generate(input);
+      const output = await generator.generate(input);
 
       const packageJsonFile = output.files.find(f => f.path === 'package.json');
       expect(packageJsonFile).toBeDefined();
@@ -146,7 +146,7 @@ describe('CodeGenerator', () => {
       expect(packageJson.name).toContain('my-awesome-game');
     });
 
-    it('should generate MainScene with player entity', () => {
+    it('should generate MainScene with player entity', async () => {
       const input: CodeGeneratorInput = {
         gameSpec: {
           meta: {
@@ -193,7 +193,7 @@ describe('CodeGenerator', () => {
         adapterBindings: [],
       };
 
-      const output = generator.generate(input);
+      const output = await generator.generate(input);
 
       const sceneFile = output.files.find(f => f.path === 'src/scenes/MainScene.ts');
       expect(sceneFile).toBeDefined();

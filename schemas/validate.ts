@@ -9,12 +9,47 @@
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
 import { readFileSync, readdirSync } from 'fs';
-import { join } from 'path';
+import { join, dirname } from 'path';
 
-const SCHEMAS_DIR = join(__dirname, '../schemas');
+/**
+ * Resolve the schemas directory.
+ *
+ * When compiled, __dirname is `schemas/dist/`, so schemas are one level up.
+ * When running source directly (e.g. via tsx), __dirname is `schemas/`.
+ * We detect this by checking whether schema files exist at each candidate.
+ */
+function resolveSchemasDir(): string {
+  // Candidate 1: same directory (running from source via tsx)
+  const candidate1 = __dirname;
+  // Candidate 2: parent directory (running from dist/)
+  const candidate2 = join(__dirname, '..');
+
+  try {
+    const files = readdirSync(candidate1);
+    if (files.some(f => f.endsWith('.schema.json'))) {
+      return candidate1;
+    }
+  } catch {
+    // ignore
+  }
+
+  try {
+    const files = readdirSync(candidate2);
+    if (files.some(f => f.endsWith('.schema.json'))) {
+      return candidate2;
+    }
+  } catch {
+    // ignore
+  }
+
+  // Fallback: assume same directory
+  return candidate1;
+}
+
+const SCHEMAS_DIR = resolveSchemasDir();
 
 // Initialize AJV with formats support
-const ajv = new Ajv({ allErrors: true, strict: true });
+const ajv = new Ajv({ allErrors: true, strict: false });
 addFormats(ajv);
 
 // Load all schemas
@@ -25,23 +60,23 @@ function loadSchemas() {
     const schemaPath = join(SCHEMAS_DIR, file);
     const schema = JSON.parse(readFileSync(schemaPath, 'utf-8'));
     ajv.addSchema(schema, schema.$id);
-    console.log(`✓ Loaded schema: ${file}`);
+    console.log(`Loaded schema: ${file}`);
   }
 }
 
 // Validate data against a schema
 export function validate(schemaId: string, data: unknown): boolean {
-  const validate = ajv.getSchema(schemaId);
+  const validateFn = ajv.getSchema(schemaId);
 
-  if (!validate) {
+  if (!validateFn) {
     throw new Error(`Schema not found: ${schemaId}`);
   }
 
-  const valid = validate(data);
+  const valid = validateFn(data);
 
-  if (!valid && validate.errors) {
+  if (!valid && validateFn.errors) {
     console.error('Validation errors:');
-    for (const error of validate.errors) {
+    for (const error of validateFn.errors) {
       console.error(`  - ${error.instancePath} ${error.message}`);
     }
     return false;
@@ -54,7 +89,10 @@ export function validate(schemaId: string, data: unknown): boolean {
 export { ajv };
 
 // CLI interface
-if (require.main === module) {
+const isMain =
+  typeof require !== 'undefined' && require.main === module;
+
+if (isMain) {
   loadSchemas();
   console.log('\nSchema validation utility loaded successfully.');
   console.log('Use this module to validate GameSpec and other data structures.\n');

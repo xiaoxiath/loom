@@ -46,12 +46,24 @@ export class ClaudeClient implements LLMClient {
 
     const temperature = options?.temperature ?? this.config.temperature;
     const maxTokens = options?.maxTokens ?? this.config.maxTokens;
+    const jsonMode = options?.jsonMode;
 
     try {
       const response = await retryWithBackoff(
         async () => {
           const systemMessage = messages.find((m) => m.role === 'system');
           const conversationMessages = messages.filter((m) => m.role !== 'system');
+
+          // H-07: When jsonMode is enabled, append JSON output instructions to the
+          // system prompt. Claude does not have a native response_format parameter
+          // like OpenAI, so we guide it via the system prompt instead.
+          let systemContent = systemMessage?.content ?? '';
+          if (jsonMode?.enabled) {
+            systemContent +=
+              '\n\nIMPORTANT: You MUST respond with valid JSON only. '
+              + 'Do not include any text, explanation, or markdown formatting outside the JSON object. '
+              + 'Your entire response must be a single, valid JSON object.';
+          }
 
           const requestParams: Anthropic.Messages.MessageCreateParams = {
             model: this.config.model,
@@ -63,8 +75,8 @@ export class ClaudeClient implements LLMClient {
             temperature,
           };
 
-          if (systemMessage) {
-            requestParams.system = systemMessage.content;
+          if (systemContent) {
+            requestParams.system = systemContent;
           }
 
           return await this.client!.messages.create(requestParams);
@@ -111,6 +123,12 @@ export class ClaudeClient implements LLMClient {
   }
 
   private handleError(error: any): LLMError {
+    // H-08: If the error is already an LLMError, return it as-is
+    // (matches the guard in openai-client.ts)
+    if (error instanceof LLMError) {
+      return error;
+    }
+
     // API key error
     if (error.status === 401 || error.message?.includes('api key')) {
       return new LLMError(

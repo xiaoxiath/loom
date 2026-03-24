@@ -37,17 +37,11 @@ export interface PlannerConfig {
  */
 export class PlannerAgent {
   private llmClient?: LLMClient;
-  private diagnostics: PlanDiagnostics;
 
   constructor(config: PlannerConfig = {}) {
     if (config.llmClient !== undefined) {
       this.llmClient = config.llmClient;
     }
-    this.diagnostics = {
-      warnings: [],
-      autoFixes: [],
-      inferredNodes: [],
-    };
   }
 
   /**
@@ -57,8 +51,10 @@ export class PlannerAgent {
    * @returns PlanResult with all graphs and diagnostics
    */
   async plan(gameSpec: GameSpec): Promise<PlanResult> {
-    // Reset diagnostics
-    this.diagnostics = {
+    // FIX (shared mutable state): diagnostics is now a local variable instead
+    // of an instance field, so concurrent calls to plan() cannot clobber each
+    // other's diagnostic data.
+    const diagnostics: PlanDiagnostics = {
       warnings: [],
       autoFixes: [],
       inferredNodes: [],
@@ -68,29 +64,29 @@ export class PlannerAgent {
     let enrichedSpec = gameSpec;
     if (this.llmClient) {
       try {
-        enrichedSpec = await this.enrichSpecWithLLM(gameSpec);
+        enrichedSpec = await this.enrichSpecWithLLM(gameSpec, diagnostics);
       } catch (error) {
         // LLM failure doesn't block, fallback to pure rules
-        this.diagnostics.warnings.push(
+        diagnostics.warnings.push(
           `LLM enrichment failed: ${error}. Using rule-based planning only.`
         );
       }
     }
 
     // Stage 1: Validate
-    this.validateSpec(enrichedSpec);
+    this.validateSpec(enrichedSpec, diagnostics);
 
     // Stage 2: Complete structure
-    const completedSpec = this.completeStructure(enrichedSpec);
+    const completedSpec = this.completeStructure(enrichedSpec, diagnostics);
 
     // Stage 3: Build graphs
     const sceneGraph = this.buildSceneGraph(completedSpec);
     const entityGraph = this.buildEntityGraph(completedSpec);
-    const componentGraph = this.buildComponentGraph(completedSpec);
+    const componentGraph = this.buildComponentGraph(completedSpec, diagnostics);
     const systemGraph = this.buildSystemGraph(completedSpec);
 
     // Stage 4: Resolve dependencies
-    this.resolveDependencies(componentGraph, systemGraph);
+    this.resolveDependencies(systemGraph, diagnostics);
 
     // Stage 5: Optimize
     this.optimize(sceneGraph, entityGraph, componentGraph, systemGraph);
@@ -100,14 +96,14 @@ export class PlannerAgent {
       entityGraph,
       componentGraph,
       systemGraph,
-      diagnostics: this.diagnostics,
+      diagnostics,
     };
   }
 
   /**
    * Stage 1: Validate GameSpec
    */
-  private validateSpec(spec: GameSpec): void {
+  private validateSpec(spec: GameSpec, diagnostics: PlanDiagnostics): void {
     // Check required entities
     const hasPlayer = spec.entities.some((e) => e.type === 'player');
     if (!hasPlayer) {
@@ -123,21 +119,21 @@ export class PlannerAgent {
 
     // Validate mechanics
     if (spec.mechanics.length === 0) {
-      this.diagnostics.warnings.push('No mechanics defined');
+      diagnostics.warnings.push('No mechanics defined');
     }
   }
 
   /**
    * Stage 2: Complete missing structure
    */
-  private completeStructure(spec: GameSpec): GameSpec {
+  private completeStructure(spec: GameSpec, diagnostics: PlanDiagnostics): GameSpec {
     const completed = structuredClone(spec) as GameSpec;
 
     // Auto-complete player position
     const player = completed.entities.find((e) => e.type === 'player');
     if (player && !player.position) {
       player.position = { x: 100, y: 300 };
-      this.diagnostics.autoFixes.push('Added default position to player');
+      diagnostics.autoFixes.push('Added default position to player');
     }
 
     // Auto-complete physics for player
@@ -146,23 +142,23 @@ export class PlannerAgent {
         gravity: completed.settings.gravity !== undefined && completed.settings.gravity > 0,
         collidable: true,
       };
-      this.diagnostics.autoFixes.push('Added default physics to player');
+      diagnostics.autoFixes.push('Added default physics to player');
     }
 
     // Auto-complete scene spawn
     if (!completed.scene.spawn) {
       completed.scene.spawn = player?.position || { x: 100, y: 300 };
-      this.diagnostics.autoFixes.push('Added default spawn position');
+      diagnostics.autoFixes.push('Added default spawn position');
     }
 
     // Auto-complete camera follow
     if (!completed.scene.cameraFollow && player) {
       completed.scene.cameraFollow = player.id;
-      this.diagnostics.autoFixes.push(`Camera will follow ${player.id}`);
+      diagnostics.autoFixes.push(`Camera will follow ${player.id}`);
     }
 
     // Auto-complete components based on mechanics
-    this.autoCompleteComponents(completed);
+    this.autoCompleteComponents(completed, diagnostics);
 
     return completed;
   }
@@ -170,41 +166,41 @@ export class PlannerAgent {
   /**
    * Auto-complete components based on mechanics
    */
-  private autoCompleteComponents(spec: GameSpec): void {
+  private autoCompleteComponents(spec: GameSpec, diagnostics: PlanDiagnostics): void {
     const player = spec.entities.find((e) => e.type === 'player');
     if (!player) return;
 
     // Jump mechanics → add jump component
     if (spec.mechanics.includes('jump') && !player.components.includes('jump')) {
       player.components.push('jump');
-      this.diagnostics.inferredNodes.push('Added jump component to player');
+      diagnostics.inferredNodes.push('Added jump component to player');
     }
 
     // Gravity → ensure gravity component
     if (spec.settings.gravity && spec.settings.gravity > 0) {
       if (!player.components.includes('gravity')) {
         player.components.push('gravity');
-        this.diagnostics.inferredNodes.push('Added gravity component to player');
+        diagnostics.inferredNodes.push('Added gravity component to player');
       }
     }
 
     // Shoot mechanics → add shoot component
     if (spec.mechanics.includes('shoot') && !player.components.includes('shoot')) {
       player.components.push('shoot');
-      this.diagnostics.inferredNodes.push('Added shoot component to player');
+      diagnostics.inferredNodes.push('Added shoot component to player');
     }
 
     // Collect mechanics → add collect component
     if (spec.mechanics.includes('collect') && !player.components.includes('collect')) {
       player.components.push('collect');
-      this.diagnostics.inferredNodes.push('Added collect component to player');
+      diagnostics.inferredNodes.push('Added collect component to player');
     }
 
     // Collision with enemies → add health component
     const hasEnemies = spec.entities.some((e) => e.type === 'enemy');
     if (hasEnemies && !player.components.includes('health')) {
       player.components.push('health');
-      this.diagnostics.inferredNodes.push('Added health component to player');
+      diagnostics.inferredNodes.push('Added health component to player');
     }
 
     // Movement → add input component
@@ -215,7 +211,7 @@ export class PlannerAgent {
     ) {
       if (!player.components.includes('keyboardInput')) {
         player.components.push('keyboardInput');
-        this.diagnostics.inferredNodes.push('Added keyboardInput component to player');
+        diagnostics.inferredNodes.push('Added keyboardInput component to player');
       }
     }
   }
@@ -280,6 +276,16 @@ export class PlannerAgent {
       }
 
       nodes.push(node);
+    }
+
+    // Q-02 FIX: Back-fill children arrays from parentId relationships
+    for (const node of nodes) {
+      if (node.parentId) {
+        const parentNode = nodes.find((n) => n.id === node.parentId);
+        if (parentNode && !parentNode.children.includes(node.id)) {
+          parentNode.children.push(node.id);
+        }
+      }
     }
 
     // Create edges
@@ -362,7 +368,7 @@ export class PlannerAgent {
   /**
    * Stage 3c: Build ComponentGraph
    */
-  private buildComponentGraph(spec: GameSpec): ComponentGraph {
+  private buildComponentGraph(spec: GameSpec, diagnostics: PlanDiagnostics): ComponentGraph {
     const entityComponents: Record<string, string[]> = {};
 
     for (const entity of spec.entities) {
@@ -370,7 +376,7 @@ export class PlannerAgent {
       const components = [...new Set(entity.components)];
 
       // Resolve component dependencies
-      const resolvedComponents = this.resolveComponentDependencies(components);
+      const resolvedComponents = this.resolveComponentDependencies(components, diagnostics);
 
       entityComponents[entity.id] = resolvedComponents;
     }
@@ -381,7 +387,7 @@ export class PlannerAgent {
   /**
    * Resolve component dependencies
    */
-  private resolveComponentDependencies(components: string[]): string[] {
+  private resolveComponentDependencies(components: string[], diagnostics: PlanDiagnostics): string[] {
     const resolved = [...components];
     const added = new Set(components);
 
@@ -402,7 +408,7 @@ export class PlannerAgent {
           if (!added.has(dep)) {
             resolved.push(dep);
             added.add(dep);
-            this.diagnostics.inferredNodes.push(
+            diagnostics.inferredNodes.push(
               `Added dependency '${dep}' for component '${component}'`
             );
           }
@@ -419,16 +425,30 @@ export class PlannerAgent {
   private buildSystemGraph(spec: GameSpec): SystemGraph {
     const systems: SystemNode[] = [];
     const dependencies: SystemDependency[] = [];
+    const addedTypes = new Set<string>();
+
+    // Helper to add a system only once
+    const addSystem = (type: string, enabled: boolean) => {
+      if (!addedTypes.has(type)) {
+        systems.push({ type, enabled });
+        addedTypes.add(type);
+      }
+    };
+
+    // FIX (GameSpec.systems ignored): Read explicitly declared systems first
+    for (const sys of spec.systems) {
+      addSystem(sys, true);
+    }
 
     // Always include physics if gravity is set
     if (spec.settings.gravity && spec.settings.gravity > 0) {
-      systems.push({ type: 'physics', enabled: true });
+      addSystem('physics', true);
     }
 
     // Include collision if any entity is collidable
     const hasCollidable = spec.entities.some((e) => e.physics?.collidable);
     if (hasCollidable) {
-      systems.push({ type: 'collision', enabled: true });
+      addSystem('collision', true);
       dependencies.push({
         system: 'collision',
         requires: ['physics'],
@@ -440,35 +460,36 @@ export class PlannerAgent {
       e.components.some((c) => c.includes('Input'))
     );
     if (hasInput) {
-      systems.push({ type: 'input', enabled: true });
+      addSystem('input', true);
     }
 
     // Include spawn if any entity spawns others
     const hasSpawn = spec.entities.some((e) => e.components.includes('spawn'));
     if (hasSpawn) {
-      systems.push({ type: 'spawn', enabled: true });
+      addSystem('spawn', true);
     }
 
     // Include camera (always)
-    systems.push({ type: 'camera', enabled: true });
+    addSystem('camera', true);
 
-    // Include scoring if defined
-    if (spec.scoring) {
-      systems.push({ type: 'scoring', enabled: true });
+    // Q-01 FIX: scoring is a required field in GameSpec so `if (spec.scoring)`
+    // is always true. Check for a meaningful scoring type instead.
+    if (spec.scoring?.type) {
+      addSystem('scoring', true);
     }
 
     // Include AI if there are enemies
     const hasEnemies = spec.entities.some((e) => e.type === 'enemy');
     if (hasEnemies) {
-      systems.push({ type: 'ai', enabled: true });
+      addSystem('ai', true);
     }
 
     // Include animation (optional, always enabled)
-    systems.push({ type: 'animation', enabled: true });
+    addSystem('animation', true);
 
     // Include sound (optional)
     if (spec.assets.some((a) => a.type === 'sound' || a.type === 'music')) {
-      systems.push({ type: 'sound', enabled: true });
+      addSystem('sound', true);
     }
 
     return { systems, dependencies };
@@ -476,17 +497,19 @@ export class PlannerAgent {
 
   /**
    * Stage 4: Resolve dependencies
+   *
+   * Q-04 FIX: Removed unused _componentGraph parameter.
    */
   private resolveDependencies(
-    _componentGraph: ComponentGraph,
-    systemGraph: SystemGraph
+    systemGraph: SystemGraph,
+    diagnostics: PlanDiagnostics
   ): void {
     // Ensure all required systems are present
     for (const dep of systemGraph.dependencies) {
       const system = systemGraph.systems.find((s) => s.type === dep.system);
       if (!system) {
         systemGraph.systems.push({ type: dep.system, enabled: true });
-        this.diagnostics.autoFixes.push(`Added missing system: ${dep.system}`);
+        diagnostics.autoFixes.push(`Added missing system: ${dep.system}`);
       }
 
       // Check if required systems exist
@@ -494,7 +517,7 @@ export class PlannerAgent {
         const requiredSystem = systemGraph.systems.find((s) => s.type === required);
         if (!requiredSystem) {
           systemGraph.systems.push({ type: required, enabled: true });
-          this.diagnostics.autoFixes.push(`Added missing system: ${required}`);
+          diagnostics.autoFixes.push(`Added missing system: ${required}`);
         }
       }
     }
@@ -529,14 +552,75 @@ export class PlannerAgent {
       ];
     }
 
-    // Sort systems by dependencies
-    systemGraph.systems.sort((a, b) => {
-      const aDeps = systemGraph.dependencies.filter((d) => d.system === a.type);
-      const bDeps = systemGraph.dependencies.filter((d) => d.system === b.type);
+    // Q-03 FIX: Sort systems using topological order based on dependency
+    // relationships. Systems that are required by others come first.
+    // Build a map of system type → set of systems it depends on
+    const depMap = new Map<string, Set<string>>();
+    for (const sys of systemGraph.systems) {
+      depMap.set(sys.type, new Set<string>());
+    }
+    for (const dep of systemGraph.dependencies) {
+      const existing = depMap.get(dep.system);
+      if (existing) {
+        for (const req of dep.requires) {
+          existing.add(req);
+        }
+      }
+    }
 
-      // Systems with fewer dependencies come first
-      return aDeps.length - bDeps.length;
-    });
+    // Kahn's algorithm for topological sort
+    const inDegree = new Map<string, number>();
+    for (const sys of systemGraph.systems) {
+      inDegree.set(sys.type, 0);
+    }
+    for (const [, deps] of depMap) {
+      for (const dep of deps) {
+        if (inDegree.has(dep)) {
+          // dep is required by someone, but dep itself has no extra in-degree from this
+        }
+      }
+    }
+    // Actually compute in-degree: if A depends on B, then A has in-degree += 1
+    for (const [sysType, deps] of depMap) {
+      inDegree.set(sysType, deps.size);
+    }
+
+    const queue: string[] = [];
+    for (const [sysType, deg] of inDegree) {
+      if (deg === 0) {
+        queue.push(sysType);
+      }
+    }
+
+    const sorted: string[] = [];
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      sorted.push(current);
+
+      // For each system that depends on current, reduce its in-degree
+      for (const [sysType, deps] of depMap) {
+        if (deps.has(current)) {
+          const newDeg = (inDegree.get(sysType) ?? 0) - 1;
+          inDegree.set(sysType, newDeg);
+          if (newDeg === 0) {
+            queue.push(sysType);
+          }
+        }
+      }
+    }
+
+    // Append any remaining systems (cycle or missing from dependency graph)
+    for (const sys of systemGraph.systems) {
+      if (!sorted.includes(sys.type)) {
+        sorted.push(sys.type);
+      }
+    }
+
+    // Reorder systemGraph.systems according to sorted order
+    const systemMap = new Map(systemGraph.systems.map((s) => [s.type, s]));
+    systemGraph.systems = sorted
+      .filter((t) => systemMap.has(t))
+      .map((t) => systemMap.get(t)!);
   }
 
   /**
@@ -547,7 +631,7 @@ export class PlannerAgent {
    * 2. Output is incremental diff, not complete spec
    * 3. Rule engine still does final validation
    */
-  private async enrichSpecWithLLM(spec: GameSpec): Promise<GameSpec> {
+  private async enrichSpecWithLLM(spec: GameSpec, diagnostics: PlanDiagnostics): Promise<GameSpec> {
     const prompt = `Analyze this GameSpec and suggest missing components/systems.
 
 ## GameSpec
@@ -603,7 +687,7 @@ Only suggest additions. Do NOT remove existing components/systems.`;
           for (const comp of components) {
             if (!entity.components.includes(comp)) {
               entity.components.push(comp);
-              this.diagnostics.inferredNodes.push(
+              diagnostics.inferredNodes.push(
                 `LLM added component '${comp}' to entity '${entityId}'`
               );
             }
@@ -617,7 +701,7 @@ Only suggest additions. Do NOT remove existing components/systems.`;
       for (const sys of suggestions.systemAdditions as string[]) {
         if (!enriched.systems.includes(sys as any)) {
           enriched.systems.push(sys as any);
-          this.diagnostics.inferredNodes.push(
+          diagnostics.inferredNodes.push(
             `LLM added system '${sys}'`
           );
         }
@@ -629,7 +713,7 @@ Only suggest additions. Do NOT remove existing components/systems.`;
       for (const mech of suggestions.mechanicAdditions as string[]) {
         if (!enriched.mechanics.includes(mech as any)) {
           enriched.mechanics.push(mech as any);
-          this.diagnostics.inferredNodes.push(
+          diagnostics.inferredNodes.push(
             `LLM added mechanic '${mech}'`
           );
         }

@@ -5,7 +5,7 @@
  */
 
 import type { RuntimeAdapter, Entity } from '@loom/core';
-import type { PhaserEngine, PhaserSprite } from '../types/phaser';
+import type { PhaserEngine, PhaserSprite, PhaserKey } from '../types/phaser';
 
 export interface JumpAdapterConfig {
   force: number;
@@ -28,6 +28,11 @@ export const jumpAdapter: RuntimeAdapter<JumpAdapterConfig, PhaserEngine> = {
         lastJumpTime: 0,
         cooldown: config.cooldown || 0,
       };
+
+      // Cache jump input keys during creation (not per-frame)
+      const cursors = engine.input.keyboard?.createCursorKeys();
+      const spaceKey = engine.input.keyboard?.addKey('SPACE');
+      sprite._jumpKeys = { up: cursors?.up, space: spaceKey };
     }
   },
 
@@ -48,16 +53,17 @@ export const jumpAdapter: RuntimeAdapter<JumpAdapterConfig, PhaserEngine> = {
       jumpState.jumpCount = 0;
     }
 
-    // Check for jump input
-    const cursors = engine.input.keyboard?.createCursorKeys();
-    const spaceKey = engine.input.keyboard?.addKey('SPACE');
+    // Read cached jump keys (created in onCreate, not per-frame)
+    const jumpKeys = sprite._jumpKeys as
+      | { up?: PhaserKey; space?: PhaserKey }
+      | undefined;
 
     const now = Date.now();
     const canJump =
       jumpState.jumpCount < jumpState.maxCount &&
       now - jumpState.lastJumpTime >= jumpState.cooldown;
 
-    if (canJump && (cursors?.up.isDown || spaceKey?.isDown)) {
+    if (canJump && (jumpKeys?.up?.isDown || jumpKeys?.space?.isDown)) {
       sprite.body.setVelocityY(-config.force);
       jumpState.jumpCount++;
       jumpState.lastJumpTime = now;

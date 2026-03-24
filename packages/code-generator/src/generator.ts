@@ -179,10 +179,12 @@ export class CodeGenerator {
    * Generate game config
    */
   private generateConfig(gameSpec: GameSpec, _systemGraph: SystemGraph): GeneratedFile {
-    const gravity = gameSpec.settings.gravity || 980;
-    const width = gameSpec.settings.worldWidth || 800;
-    const height = gameSpec.settings.worldHeight || 600;
-    const bgColor = gameSpec.settings.backgroundColor || '#000000';
+    // H-01 FIX: Use ?? instead of || so that falsy values like 0 or '' are
+    // preserved rather than replaced by the default.
+    const gravity = gameSpec.settings.gravity ?? 980;
+    const width = gameSpec.settings.worldWidth ?? 800;
+    const height = gameSpec.settings.worldHeight ?? 600;
+    const bgColor = gameSpec.settings.backgroundColor ?? '#000000';
 
     const config = `import { MainScene } from './scenes/MainScene';
 
@@ -429,6 +431,15 @@ ${collisionHandlers}
       declarations.push('  private scoreText!: Phaser.GameObjects.Text;');
     }
 
+    // Add keyboard input declarations (cached in create, read in update)
+    const hasKeyboardInput = entities.some(e =>
+      e.components.includes('keyboardInput')
+    );
+    if (hasKeyboardInput) {
+      declarations.push('  private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;');
+      declarations.push('  private spaceKey!: Phaser.Input.Keyboard.Key;');
+    }
+
     return declarations.join('\n');
   }
 
@@ -494,9 +505,10 @@ ${collisionHandlers}
     lines.push('    // Create entities');
     for (const entity of gameSpec.entities) {
       const varName = this.getEntityVarName(entity.id);
-      const x = entity.position?.x || 0;
-      const y = entity.position?.y || 0;
-      const sprite = entity.sprite || 'placeholder';
+      // H-01 FIX: Use ?? so that position 0 is preserved
+      const x = entity.position?.x ?? 0;
+      const y = entity.position?.y ?? 0;
+      const sprite = entity.sprite ?? 'placeholder';
 
       lines.push(
         `    this.${varName} = this.physics.add.sprite(${x}, ${y}, '${sprite}');`
@@ -601,7 +613,7 @@ ${collisionHandlers}
           lines.push(`        const spawned = this.physics.add.sprite(`);
           lines.push(`          Phaser.Math.Between(100, 700),`);
           lines.push(`          0,`);
-          lines.push(`          '${targetEntity.sprite || 'placeholder'}'`);
+          lines.push(`          '${targetEntity.sprite ?? 'placeholder'}'`);
           lines.push(`        );`);
           lines.push(`        this.${targetEntity.type}Group.add(spawned);`);
           lines.push(`      },`);
@@ -610,6 +622,14 @@ ${collisionHandlers}
         }
       }
     }
+
+    // ── Step 7: Initialize keyboard input (cached for update) ──
+    lines.push('');
+    lines.push('    // Initialize keyboard input (once, not per-frame)');
+    lines.push('    if (this.input.keyboard) {');
+    lines.push('      this.cursors = this.input.keyboard.createCursorKeys();');
+    lines.push("      this.spaceKey = this.input.keyboard.addKey('SPACE');");
+    lines.push('    }');
 
     return lines.join('\n');
   }
@@ -630,20 +650,20 @@ ${collisionHandlers}
 
     const player = players[0]!;
     const playerVar = this.getEntityVarName(player.id);
-    const playerComponents = componentGraph.entityComponents[player.id] || [];
+    const playerComponents = componentGraph.entityComponents[player.id] ?? [];
 
     // ── Generate keyboard control code based on ComponentGraph ──
     if (playerComponents.includes('keyboardInput')) {
       lines.push('');
-      lines.push('    const cursors = this.input.keyboard?.createCursorKeys();');
+      lines.push('    // Read cached keyboard state (initialized in create)');
 
       // run component → horizontal movement
       if (playerComponents.includes('run')) {
         lines.push('');
         lines.push('    // Horizontal movement (run component)');
-        lines.push('    if (cursors?.left.isDown) {');
+        lines.push('    if (this.cursors?.left.isDown) {');
         lines.push(`      this.${playerVar}.setVelocityX(-160);`);
-        lines.push('    } else if (cursors?.right.isDown) {');
+        lines.push('    } else if (this.cursors?.right.isDown) {');
         lines.push(`      this.${playerVar}.setVelocityX(160);`);
         lines.push('    } else {');
         lines.push(`      this.${playerVar}.setVelocityX(0);`);
@@ -654,9 +674,8 @@ ${collisionHandlers}
       if (playerComponents.includes('jump')) {
         lines.push('');
         lines.push('    // Jump (jump component)');
-        lines.push(`    const spaceKey = this.input.keyboard?.addKey('SPACE');`);
         lines.push(
-          `    if (spaceKey?.isDown && this.${playerVar}.body?.touching.down) {`
+          `    if (this.spaceKey?.isDown && this.${playerVar}.body?.touching.down) {`
         );
         lines.push(`      this.${playerVar}.setVelocityY(-320);`);
         lines.push('    }');
@@ -696,7 +715,7 @@ ${collisionHandlers}
       for (const entity of gameSpec.entities) {
         if (entity.type === 'player') continue;
 
-        const components = componentGraph.entityComponents[entity.id] || [];
+        const components = componentGraph.entityComponents[entity.id] ?? [];
         const varName = this.getEntityVarName(entity.id);
 
         // Patrol component - horizontal patrol

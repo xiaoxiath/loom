@@ -8,6 +8,7 @@
 export type {
   LLMClient,
   LLMConfig,
+  LLMProvider,
   ChatMessage,
   LLMResponse,
   JSONModeConfig,
@@ -25,3 +26,5 @@ export {
   createLLMClientFromEnv,
   createMockLLMClient,
 } from './factory';
+
+export type { MockLLMClientOptions } from './factory';
