@@ -21,6 +21,7 @@ import type {
   GeneratedFile,
   GeneratorDiagnostics,
 } from './types';
+import { typeCheckGeneratedCode } from './type-checker';
 import {
   CODEGEN_SYSTEM_PROMPT,
   CODEGEN_TEMPERATURE,
@@ -42,6 +43,7 @@ export class CodeGenerator {
   private llmClient?: LLMClient;
   private useFewShot: boolean;
   private fallbackToTemplate: boolean;
+  private enableTypeCheck: boolean; // NEW: Enable static type checking
   private diagnostics: GeneratorDiagnostics = {
     warnings: [],
     errors: [],
@@ -55,6 +57,7 @@ export class CodeGenerator {
     }
     this.useFewShot = config.useFewShot ?? true;
     this.fallbackToTemplate = config.fallbackToTemplate ?? true;
+    this.enableTypeCheck = (config as any).enableTypeCheck ?? true; // Enable by default
   }
 
   /**
@@ -90,6 +93,24 @@ export class CodeGenerator {
 
     // Stage 7: Generate vite config
     files.push(this.generateViteConfig());
+
+    // ── Stage 8: Static Type Checking (NEW) ──
+    if (this.enableTypeCheck) {
+      const typeCheckResult = typeCheckGeneratedCode(files, this.diagnostics);
+
+      if (!typeCheckResult.valid) {
+        this.diagnostics.errors.unshift(
+          '❌ Type checking failed! Generated code contains type errors:'
+        );
+        // Don't throw - return files anyway so user can see the errors
+      } else if (typeCheckResult.warnings.length > 0) {
+        this.diagnostics.warnings.unshift(
+          '⚠️  Type checking passed with warnings:'
+        );
+      } else {
+        this.diagnostics.warnings.push('✅ Type checking passed');
+      }
+    }
 
     // Collect dependencies
     const dependencies: Record<string, string> = {
@@ -561,8 +582,8 @@ ${collisionHandlers}
         lines.push(
           `    this.${varName} = this.physics.add.staticSprite(${x}, ${y}, '${sprite}');`
         );
-        // Static sprites are immovable by default, but be explicit
-        lines.push(`    this.${varName}.setImmovable(true);`);
+        // Static sprites are already immovable, no need to call setImmovable()
+        // which doesn't exist on StaticBody type
       } else {
         lines.push(
           `    this.${varName} = this.physics.add.sprite(${x}, ${y}, '${sprite}');`
