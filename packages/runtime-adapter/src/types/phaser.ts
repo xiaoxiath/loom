@@ -95,11 +95,15 @@ export interface PhaserSprite {
   // Dynamic state properties used by adapters
   jumpState?: JumpState;
   healthState?: HealthState;
+  spawnState?: SpawnState;
   inputKeys?: Record<string, PhaserKey>;
   keyState?: Record<string, boolean>;
   collisionCallbacks?: Record<string, (sprite1: PhaserSprite, sprite2: PhaserSprite) => void>;
   destroyOnCollisionTargets?: string[];
   destroyDelay?: number;
+  _jumpKeys?: unknown;
+  _moveKeys?: unknown;
+  _moveSpeed?: unknown;
   [key: string]: unknown;
 }
 
@@ -122,6 +126,17 @@ export interface HealthState {
   invincible: boolean;
   invincibleDuration: number;
   lastDamageTime: number;
+}
+
+/**
+ * Spawn state stored on sprite
+ */
+export interface SpawnState {
+  lastSpawnTime: number;
+  spawnRate: number;
+  maxSpawns: number;
+  activeSpawns: number;
+  spawnType: string;
 }
 
 /**

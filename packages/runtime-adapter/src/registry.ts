@@ -12,6 +12,8 @@ import {
   keyboardInputAdapter,
   healthAdapter,
   destroyOnCollisionAdapter,
+  moveAdapter,
+  spawnAdapter,
 } from './adapters';
 
 export class AdapterRegistryImpl implements IAdapterRegistry {
@@ -130,6 +132,8 @@ export function createDefaultRegistry(): AdapterRegistryImpl {
     keyboardInputAdapter,
     healthAdapter,
     destroyOnCollisionAdapter,
+    moveAdapter,
+    spawnAdapter,
   ] as unknown as RuntimeAdapter[];
 
   for (const adapter of coreAdapters) {

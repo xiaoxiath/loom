@@ -19,3 +19,9 @@ export type { HealthAdapterConfig } from './health';
 
 export { destroyOnCollisionAdapter } from './destroy-on-collision';
 export type { DestroyOnCollisionAdapterConfig } from './destroy-on-collision';
+
+export { moveAdapter } from './move';
+export type { MoveAdapterConfig } from './move';
+
+export { spawnAdapter } from './spawn';
+export type { SpawnAdapterConfig } from './spawn';

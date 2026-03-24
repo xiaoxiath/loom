@@ -76,6 +76,17 @@ function getDefaultConfig(componentType: string): Record<string, unknown> {
       bulletSpeed: 400,
       cooldown: 250,
     },
+    move: {
+      speed: 200,
+      horizontal: true,
+      vertical: true,
+      autoMove: false,
+    },
+    spawn: {
+      spawnRate: 2000,
+      maxSpawns: 5,
+      initialDelay: 0,
+    },
   };
 
   return defaults[componentType] || {};
