@@ -382,6 +382,17 @@ ${createCode}
 ${updateCode}
   }
 ${collisionHandlers}
+
+  /**
+   * Generate placeholder texture at runtime
+   */
+  private generatePlaceholderTexture(key: string, color: string) {
+    const graphics = this.make.graphics({ x: 0, y: 0 });
+    graphics.fillStyle(Phaser.Display.Color.HexStringToColor(color).color);
+    graphics.fillRect(0, 0, 32, 32);
+    graphics.generateTexture(key, 32, 32);
+    graphics.destroy();
+  }
 }
 `;
   }
@@ -465,8 +476,14 @@ ${collisionHandlers}
       if (entity.sprite) {
         const spriteKey = entity.sprite;
         const cachedPath = assetMap.get(spriteKey);
-        const spritePath = cachedPath ?? this.generatePlaceholderDataUrl(spriteKey);
-        lines.push(`    this.load.image('${spriteKey}', '${spritePath}');`);
+
+        if (cachedPath) {
+          // Use resolved asset URL
+          lines.push(`    this.load.image('${spriteKey}', '${cachedPath}');`);
+        } else {
+          // Skip loading - will generate texture in create()
+          lines.push(`    // Texture '${spriteKey}' will be generated in create()`);
+        }
       }
     }
 
@@ -486,6 +503,24 @@ ${collisionHandlers}
     _componentGraph: ComponentGraph
   ): string {
     const lines: string[] = [];
+
+    // ── Step 0: Generate placeholder textures ──
+    const spritesToGenerate = new Set<string>();
+    for (const entity of gameSpec.entities) {
+      if (entity.sprite) {
+        spritesToGenerate.add(entity.sprite);
+      }
+    }
+
+    if (spritesToGenerate.size > 0) {
+      lines.push('    // Generate placeholder textures');
+      for (const spriteKey of spritesToGenerate) {
+        const hue = this.hashCode(spriteKey) % 360;
+        const color = `hsl(${hue}, 70%, 50%)`;
+        lines.push(`    this.generatePlaceholderTexture('${spriteKey}', '${color}');`);
+      }
+      lines.push('');
+    }
 
     // ── Step 1: Create Groups ──
     const typeGroups: Record<string, string[]> = {};
@@ -916,17 +951,6 @@ export default defineConfig({
    */
   private getEntityVarName(entityId: string): string {
     return entityId.replace(/-/g, '_');
-  }
-
-  /**
-   * Generate placeholder sprite as SVG data URL
-   */
-  private generatePlaceholderDataUrl(spriteKey: string): string {
-    const hue = this.hashCode(spriteKey) % 360;
-    const color = `hsl(${hue}, 70%, 50%)`;
-    // URL-encode the SVG to avoid quote issues in generated code
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><rect width="32" height="32" fill="${color}"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="8" fill="white">${spriteKey.slice(0, 4)}</text></svg>`;
-    return `data:image/svg+xml,${encodeURIComponent(svg)}`;
   }
 
   /**

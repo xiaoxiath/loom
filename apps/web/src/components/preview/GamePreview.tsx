@@ -116,7 +116,7 @@ export function GamePreview() {
         <iframe
           key={iframeKey}
           src={blobUrl}
-          sandbox="allow-scripts"
+          sandbox="allow-scripts allow-same-origin"
           className="w-full h-full border-0"
           title="Game Preview"
         />
