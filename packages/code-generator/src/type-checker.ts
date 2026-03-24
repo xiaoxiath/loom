@@ -82,8 +82,6 @@ export function typeCheckGeneratedCode(
 
   // Check each file
   for (const file of tsFiles) {
-    const lines = file.content.split('\n');
-
     for (const check of API_ERRORS) {
       if (typeof check.check === 'function') {
         // Custom check function
@@ -109,7 +107,7 @@ export function typeCheckGeneratedCode(
       } else if (check.disallowedAfter) {
         // Check for disallowed method calls after specific patterns
         const pattern = new RegExp(
-          `${check.disabledAfter}\\([^)]*\\)[^;]*${check.pattern.source}`,
+          `${check.disallowedAfter}\\([^)]*\\)[^;]*${check.pattern.source}`,
           'g'
         );
         const matches = file.content.match(pattern);
