@@ -555,15 +555,27 @@ ${collisionHandlers}
 
     // ── Step 1: Create Groups ──
     const typeGroups: Record<string, string[]> = {};
+    const staticGroups: Set<string> = new Set(); // Track which groups need to be static
+
     for (const entity of gameSpec.entities) {
       if (entity.type !== 'player') {
         if (!typeGroups[entity.type]) typeGroups[entity.type] = [];
         typeGroups[entity.type]!.push(entity.id);
+
+        // Track if this group needs to be static
+        if (entity.physics?.static) {
+          staticGroups.add(entity.type);
+        }
       }
     }
 
     for (const type of Object.keys(typeGroups)) {
-      lines.push(`    this.${type}Group = this.physics.add.group();`);
+      const isStaticGroup = staticGroups.has(type);
+      if (isStaticGroup) {
+        lines.push(`    this.${type}Group = this.physics.add.staticGroup();`);
+      } else {
+        lines.push(`    this.${type}Group = this.physics.add.group();`);
+      }
     }
     lines.push('');
 
@@ -571,32 +583,36 @@ ${collisionHandlers}
     lines.push('    // Create entities');
     for (const entity of gameSpec.entities) {
       const varName = this.getEntityVarName(entity.id);
-      // H-01 FIX: Use ?? so that position 0 is preserved
       const x = entity.position?.x ?? 0;
       const y = entity.position?.y ?? 0;
       const sprite = entity.sprite ?? 'placeholder';
 
-      // Use static sprite for static entities
       const isStatic = entity.physics?.static === true;
-      if (isStatic) {
+      const groupIsStatic = entity.type !== 'player' && staticGroups.has(entity.type);
+
+      if (isStatic && groupIsStatic) {
+        // Create static entity through static group
+        lines.push(
+          `    this.${varName} = this.${entity.type}Group.create(${x}, ${y}, '${sprite}');`
+        );
+      } else if (isStatic) {
+        // Static entity but no group - create as static sprite
         lines.push(
           `    this.${varName} = this.physics.add.staticSprite(${x}, ${y}, '${sprite}');`
         );
-        // Static sprites are already immovable, no need to call setImmovable()
-        // which doesn't exist on StaticBody type
       } else {
+        // Dynamic entity
         lines.push(
           `    this.${varName} = this.physics.add.sprite(${x}, ${y}, '${sprite}');`
         );
         // Only dynamic sprites can collide with world bounds
-        if (entity.physics?.collidable) {
+        if (entity.physics?.collidable && entity.type === 'player') {
           lines.push(`    this.${varName}.setCollideWorldBounds(true);`);
         }
-      }
-
-      // Non-player entities join corresponding Group
-      if (entity.type !== 'player' && typeGroups[entity.type]) {
-        lines.push(`    this.${entity.type}Group.add(this.${varName});`);
+        // Non-player entities join corresponding Group
+        if (entity.type !== 'player' && typeGroups[entity.type]) {
+          lines.push(`    this.${entity.type}Group.add(this.${varName});`);
+        }
       }
     }
 
